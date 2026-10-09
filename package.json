@@ -1,6 +1,6 @@
 {
   "name": "wordforge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "WordForge - Professional Desktop Word Processor for macOS",
   "main": "dist-electron/main.js",
   "scripts": {

@@ -15,8 +15,8 @@ WordForge is a desktop word processor that reproduces the Microsoft Word for Mac
 
 Download the latest version directly from the [GitHub Releases](https://github.com/tonmoy-y/WordForge/releases) page:
 
-- **macOS DMG Installer (Apple Silicon):** [`WordForge-1.0.0-arm64.dmg`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.0/WordForge-1.0.0-arm64.dmg)
-- **macOS Portable Archive (Apple Silicon):** [`WordForge-1.0.0-arm64-mac.zip`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.0/WordForge-1.0.0-arm64-mac.zip)
+- **macOS DMG Installer (Apple Silicon):** [`WordForge-1.0.1-arm64.dmg`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64.dmg)
+- **macOS Portable Archive (Apple Silicon):** [`WordForge-1.0.1-arm64-mac.zip`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64-mac.zip)
 
 ---
 
@@ -98,8 +98,8 @@ npm run electron:build
 ```
 
 Packaged distribution outputs will be located in the `release/` directory:
-- `release/WordForge-1.0.0-arm64.dmg` (Disk Image installer)
-- `release/WordForge-1.0.0-arm64-mac.zip` (Portable ZIP archive)
+- `release/WordForge-1.0.1-arm64.dmg` (Disk Image installer)
+- `release/WordForge-1.0.1-arm64-mac.zip` (Portable ZIP archive)
 - `release/mac-arm64/WordForge.app` (Application bundle)
 
 ---
