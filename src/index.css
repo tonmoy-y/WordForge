@@ -1,0 +1,713 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   WORDFORGE WORD PROCESSOR - STYLESHEET
+   Microsoft Word for Mac High-Fidelity UI & Typography
+   ========================================================================= */
+
+:root {
+  --word-blue: #185ABD;
+  --word-blue-dark: #103F91;
+  --word-blue-light: #EBF3FC;
+  --word-blue-hover: #124AA0;
+  --word-accent: #2B579A;
+  --word-ribbon-bg: #FFFFFF;
+  --word-canvas-bg: #E8ECEF;
+  --word-border: #D1D5DB;
+  --word-border-subtle: #E5E7EB;
+  --word-text-primary: #1F2937;
+  --word-text-secondary: #4B5563;
+  --word-text-muted: #6B7280;
+  --word-selection: #B4D7FF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--word-text-primary);
+  background-color: var(--word-canvas-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* =========================================================================
+   TITLE BAR & QUICK ACCESS TOOLBAR
+   ========================================================================= */
+
+.word-titlebar {
+  height: 42px;
+  background-color: #185ABD;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  user-select: none;
+  -webkit-app-region: drag;
+  position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.word-titlebar button,
+.word-titlebar input,
+.word-titlebar .no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.word-window-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
+}
+
+.save-status-pill {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.save-status-saved {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #E2E8F0;
+}
+
+.save-status-dirty {
+  background-color: #EF4444;
+  color: #FFFFFF;
+}
+
+/* =========================================================================
+   TOP APPLICATION MENU BAR
+   ========================================================================= */
+
+.word-menubar {
+  height: 28px;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.word-menu-item {
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #334155;
+  transition: all 0.15s ease;
+  font-weight: 450;
+}
+
+.word-menu-item:hover, .word-menu-item.active {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+
+/* =========================================================================
+   RIBBON TABS & COMMAND PANELS
+   ========================================================================= */
+
+.word-ribbon-container {
+  background-color: var(--word-ribbon-bg);
+  border-bottom: 1px solid var(--word-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  z-index: 30;
+}
+
+.word-ribbon-tabs {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 2px;
+  background-color: #F1F5F9;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.word-tab-button {
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #475569;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.word-tab-button:hover {
+  color: #0F172A;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.word-tab-button.active {
+  color: #185ABD;
+  font-weight: 600;
+  background-color: #FFFFFF;
+}
+
+.word-tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #185ABD;
+}
+
+.word-ribbon-panel {
+  min-height: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 10px;
+  background-color: #FFFFFF;
+}
+
+.word-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 84px;
+  padding: 2px 8px;
+  position: relative;
+}
+
+.word-group-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.word-group-label {
+  font-size: 10px;
+  text-align: center;
+  color: #94A3B8;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.word-group-separator {
+  width: 1px;
+  height: 72px;
+  background-color: #E2E8F0;
+  align-self: center;
+}
+
+/* Ribbon Buttons */
+.ribbon-btn-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 48px;
+  height: 62px;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: #334155;
+  transition: all 0.12s ease;
+}
+
+.ribbon-btn-large:hover {
+  background-color: #F1F5F9;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+
+.ribbon-btn-large.active {
+  background-color: #E0E7FF;
+  border-color: #818CF8;
+  color: #1E40AF;
+}
+
+.ribbon-btn-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: #334155;
+  transition: all 0.12s ease;
+}
+
+.ribbon-btn-small:hover {
+  background-color: #F1F5F9;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+
+.ribbon-btn-small.active {
+  background-color: #E0E7FF;
+  border-color: #93C5FD;
+  color: #1D4ED8;
+}
+
+.ribbon-dropdown {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border: 1px solid #CBD5E1;
+  border-radius: 3px;
+  background-color: #FFFFFF;
+  font-size: 12px;
+  cursor: pointer;
+  color: #334155;
+}
+
+.ribbon-dropdown:hover {
+  border-color: #94A3B8;
+  background-color: #F8FAFC;
+}
+
+/* =========================================================================
+   DOCUMENT CANVAS & PAGES
+   ========================================================================= */
+
+.word-canvas-viewport {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-color: #E8ECEF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 64px 0;
+}
+
+.word-page-sheet {
+  background-color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  position: relative;
+  border: 1px solid #D5DAE0;
+  display: flex;
+  flex-direction: column;
+}
+
+.word-page-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 80px;
+  font-weight: 800;
+  color: rgba(200, 200, 200, 0.25);
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.1em;
+  z-index: 5;
+}
+
+.word-page-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  font-size: 11px;
+  color: #94A3B8;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s ease;
+}
+
+.word-page-header:hover {
+  border-color: #CBD5E1;
+}
+
+.word-page-footer {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  font-size: 11px;
+  color: #94A3B8;
+  border-top: 1px dashed transparent;
+  transition: border-color 0.15s ease;
+}
+
+.word-page-footer:hover {
+  border-color: #CBD5E1;
+}
+
+.word-page-content-area {
+  flex: 1;
+  position: relative;
+  outline: none;
+}
+
+/* =========================================================================
+   TIPTAP EDITOR TYPOGRAPHY & BLOCKS
+   ========================================================================= */
+
+.ProseMirror {
+  outline: none !important;
+  min-height: 100%;
+  font-family: 'Aptos', Calibri, -apple-system, sans-serif;
+  color: #1F2937;
+  font-size: 11pt;
+  line-height: 1.15;
+  user-select: text;
+}
+
+.ProseMirror p {
+  margin-top: 0;
+  margin-bottom: 8pt;
+}
+
+.ProseMirror h1 {
+  font-size: 20pt;
+  font-weight: 600;
+  color: #1F4E79;
+  margin-top: 18pt;
+  margin-bottom: 6pt;
+  line-height: 1.2;
+}
+
+.ProseMirror h2 {
+  font-size: 15pt;
+  font-weight: 600;
+  color: #2E75B6;
+  margin-top: 14pt;
+  margin-bottom: 4pt;
+  line-height: 1.25;
+}
+
+.ProseMirror h3 {
+  font-size: 13pt;
+  font-weight: 600;
+  color: #1F4E79;
+  margin-top: 12pt;
+  margin-bottom: 3pt;
+}
+
+.ProseMirror h4 {
+  font-size: 11.5pt;
+  font-weight: 600;
+  color: #2E75B6;
+  font-style: italic;
+  margin-top: 10pt;
+  margin-bottom: 2pt;
+}
+
+.ProseMirror ul, .ProseMirror ol {
+  padding-left: 24pt;
+  margin-top: 0;
+  margin-bottom: 8pt;
+}
+
+.ProseMirror li {
+  margin-bottom: 2pt;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #2B579A;
+  padding-left: 12pt;
+  margin-left: 0;
+  margin-top: 8pt;
+  margin-bottom: 8pt;
+  color: #4B5563;
+  font-style: italic;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 12pt 0;
+  overflow: hidden;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 1em;
+  border: 1px solid #CBD5E1;
+  padding: 6pt 8pt;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ProseMirror th {
+  font-weight: 600;
+  text-align: left;
+  background-color: #F1F5F9;
+  color: #1F4E79;
+}
+
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(200, 220, 255, 0.4);
+  pointer-events: none;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid #CBD5E1;
+  margin: 16pt 0;
+}
+
+.ProseMirror a {
+  color: #185ABD;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Track Changes */
+ins.tc-insert {
+  color: #15803D;
+  text-decoration: underline;
+  background-color: #F0FDF4;
+}
+
+del.tc-delete {
+  color: #B91C1C;
+  text-decoration: line-through;
+  background-color: #FEF2F2;
+}
+
+/* Comments Highlight */
+mark.comment-highlight {
+  background-color: #FEF08A;
+  border-bottom: 2px solid #EAB308;
+  cursor: pointer;
+}
+
+/* =========================================================================
+   STATUS BAR
+   ========================================================================= */
+
+.word-statusbar {
+  height: 26px;
+  background-color: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 11.5px;
+  color: #475569;
+  z-index: 25;
+}
+
+.word-status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.word-status-item:hover {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+
+/* =========================================================================
+   SIDE PANES (NAVIGATION, COMMENTS, TRACK CHANGES)
+   ========================================================================= */
+
+.word-sidepane {
+  width: 290px;
+  background-color: #FFFFFF;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  z-index: 20;
+}
+
+.word-sidepane.right-pane {
+  border-right: none;
+  border-left: 1px solid #E2E8F0;
+}
+
+.sidepane-header {
+  height: 36px;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.sidepane-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* =========================================================================
+   MODALS AND DIALOGS
+   ========================================================================= */
+
+.word-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.word-dialog-box {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  border: 1px solid #CBD5E1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleUp 0.15s ease-out;
+}
+
+.word-dialog-header {
+  height: 44px;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.word-dialog-content {
+  padding: 16px;
+  overflow-y: auto;
+  max-height: calc(85vh - 100px);
+}
+
+.word-dialog-footer {
+  height: 52px;
+  background-color: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.btn-primary {
+  background-color: #185ABD;
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  background-color: #124AA0;
+}
+
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #F1F5F9;
+  border-color: #94A3B8;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.97); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Print CSS */
+@media print {
+  .word-titlebar,
+  .word-menubar,
+  .word-ribbon-container,
+  .word-statusbar,
+  .word-sidepane,
+  .horizontal-ruler,
+  .vertical-ruler {
+    display: none !important;
+  }
+
+  body, .word-canvas-viewport {
+    background-color: #FFFFFF !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .word-page-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+  }
+}

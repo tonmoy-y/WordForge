@@ -1,0 +1,31 @@
+{
+  "appId": "com.tonmoy.wordforge",
+  "productName": "WordForge",
+  "copyright": "Copyright © 2026 WordForge Contributors",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "mac": {
+    "category": "public.app-category.productivity",
+    "target": [
+      {
+        "target": "dir",
+        "arch": ["arm64"]
+      },
+      {
+        "target": "dmg",
+        "arch": ["arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["arm64"]
+      }
+    ],
+    "identity": null
+  }
+}
