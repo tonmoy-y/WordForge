@@ -29,6 +29,7 @@ interface MenuBarProps {
   onToggleRuler: () => void;
   onToggleNavPane: () => void;
   onAbout: () => void;
+  onCheckUpdates?: () => void;
 }
 
 export const MenuBar: React.FC<MenuBarProps> = (props) => {
@@ -240,6 +241,10 @@ export const MenuBar: React.FC<MenuBarProps> = (props) => {
           <div className="absolute top-6 left-0 w-52 bg-white border border-gray-300 rounded shadow-lg py-1 z-50 text-xs">
             <button onClick={() => handleItemClick(props.onAbout)} className="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white">
               About WordForge Pro
+            </button>
+            <div className="h-px bg-gray-200 my-1" />
+            <button onClick={() => handleItemClick(props.onCheckUpdates || (() => {}))} className="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white">
+              Check for Updates…
             </button>
           </div>
         )}

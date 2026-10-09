@@ -3,17 +3,19 @@ import {
   HelpCircle,
   Keyboard,
   Info,
-  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 interface HelpTabProps {
   onOpenShortcuts: () => void;
   onOpenAbout: () => void;
+  onCheckUpdates?: () => void;
 }
 
 export const HelpTab: React.FC<HelpTabProps> = ({
   onOpenShortcuts,
   onOpenAbout,
+  onCheckUpdates,
 }) => {
   return (
     <div className="word-ribbon-panel">
@@ -38,6 +40,14 @@ export const HelpTab: React.FC<HelpTabProps> = ({
             <span>Shortcuts</span>
           </button>
           <button
+            onClick={onCheckUpdates || (() => (window as any).__openUpdateDialog?.())}
+            className="ribbon-btn-large"
+            title="Check for Software Updates"
+          >
+            <RefreshCw size={22} className="text-[#0284C7]" />
+            <span>Updates</span>
+          </button>
+          <button
             onClick={onOpenAbout}
             className="ribbon-btn-large"
             title="About WordForge Pro for macOS"
@@ -46,7 +56,7 @@ export const HelpTab: React.FC<HelpTabProps> = ({
             <span>About</span>
           </button>
         </div>
-        <div className="word-group-label">Help & Documentation</div>
+        <div className="word-group-label">Help & Updates</div>
       </div>
     </div>
   );

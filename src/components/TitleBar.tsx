@@ -107,7 +107,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         )}
       </div>
 
-      {/* Right side: Search, Share, Controls */}
+      {/* Right side: Search, Updates, Share, Controls */}
       <div className="flex items-center gap-2 no-drag">
         <button
           onClick={onSearchOpen}
@@ -116,6 +116,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         >
           <Search size={13} />
           <span>Search</span>
+        </button>
+        <button
+          onClick={() => (window as any).__openUpdateDialog?.()}
+          className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white/90 text-xs px-2 py-1 rounded transition"
+          title="Check for Updates"
+        >
+          <RotateCw size={12} />
+          <span>Update</span>
         </button>
         <button
           onClick={() => {

@@ -20,6 +20,17 @@ import { TrackChangesEngine } from '../src/core/review/trackChangesEngine';
 import { StorageService } from '../src/core/persistence/storage';
 import { DocumentState } from '../src/types/document';
 
+if (typeof Blob !== 'undefined' && !Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function () {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
 describe('WordForge Word Processor Engine Test Suite', () => {
   let doc: DocumentState;
 

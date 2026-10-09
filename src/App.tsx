@@ -50,6 +50,7 @@ import { MailMergeDialog } from './components/Dialogs/MailMergeDialog';
 import { ShortcutsDialog } from './components/Dialogs/ShortcutsDialog';
 import { AboutDialog } from './components/Dialogs/AboutDialog';
 import { SpellCheckDialog } from './components/Dialogs/SpellCheckDialog';
+import { UpdateDialog } from './components/Dialogs/UpdateDialog';
 
 export const App: React.FC = () => {
   const [docState, setDocState] = useState<DocumentState>(() => createNewDocument('Document 1'));
@@ -79,7 +80,12 @@ export const App: React.FC = () => {
     | 'shortcuts'
     | 'about'
     | 'spellcheck'
+    | 'update'
   >(null);
+
+  useEffect(() => {
+    (window as any).__openUpdateDialog = () => setActiveDialog('update');
+  }, []);
 
   // TipTap Editor instance
   const editor = useEditor({
@@ -400,6 +406,7 @@ export const App: React.FC = () => {
         onToggleRuler={() => updateDocState({ showRuler: !docState.showRuler })}
         onToggleNavPane={() => updateDocState({ showNavigationPane: !docState.showNavigationPane })}
         onAbout={() => setActiveDialog('about')}
+        onCheckUpdates={() => setActiveDialog('update')}
       />
 
       {/* 3. Word Ribbon */}
@@ -426,6 +433,7 @@ export const App: React.FC = () => {
         onOpenWordCount={() => setActiveDialog('wordcount')}
         onOpenShortcuts={() => setActiveDialog('shortcuts')}
         onOpenAbout={() => setActiveDialog('about')}
+        onCheckUpdates={() => setActiveDialog('update')}
         onOpenMailMergeDialog={() => setActiveDialog('mailmerge')}
         onNewComment={handleNewComment}
       />
@@ -572,6 +580,9 @@ export const App: React.FC = () => {
       )}
       {activeDialog === 'spellcheck' && (
         <SpellCheckDialog editor={editor} onClose={() => setActiveDialog(null)} />
+      )}
+      {activeDialog === 'update' && (
+        <UpdateDialog onClose={() => setActiveDialog(null)} />
       )}
     </div>
   );

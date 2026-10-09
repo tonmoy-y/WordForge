@@ -37,6 +37,7 @@ interface RibbonProps {
   onOpenWordCount: () => void;
   onOpenShortcuts: () => void;
   onOpenAbout: () => void;
+  onCheckUpdates?: () => void;
   onOpenMailMergeDialog: () => void;
   onNewComment: () => void;
 }
@@ -221,7 +222,11 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
           />
         )}
         {activeTab === 'Help' && (
-          <HelpTab onOpenShortcuts={props.onOpenShortcuts} onOpenAbout={props.onOpenAbout} />
+          <HelpTab
+            onOpenShortcuts={props.onOpenShortcuts}
+            onOpenAbout={props.onOpenAbout}
+            onCheckUpdates={props.onCheckUpdates}
+          />
         )}
       </div>
     </div>
