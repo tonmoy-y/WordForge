@@ -29,12 +29,11 @@ static void send_file_open_to_wordforge(NSString *rawPath) {
 
     if (!filePath || filePath.length == 0) return;
 
-    // Expand tilde if present
     filePath = [filePath stringByStandardizingPath];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         int port = get_control_port();
-        
+
         // Retry for up to 8 seconds (80 * 100ms) to ensure WordForge engine has started
         for (int attempt = 0; attempt < 80; attempt++) {
             int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,29 +57,56 @@ static void send_file_open_to_wordforge(NSString *rawPath) {
                         [payload appendBytes:"\n" length:1];
                         write(sock, payload.bytes, payload.length);
 
-                        // Drain reply line
                         char buf[1024];
                         ssize_t n = read(sock, buf, sizeof(buf) - 1);
                         if (n > 0) {
                             buf[n] = 0;
-                            NSLog(@"[WordForgeBridge] Opened document successfully: %@", filePath);
                         }
                     }
                     close(sock);
-
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [NSApp activateIgnoringOtherApps:YES];
-                    });
                     return;
                 }
                 close(sock);
             }
             usleep(100000); // 100ms
         }
-        NSLog(@"[WordForgeBridge] Timeout connecting to WordForge control server for %@", filePath);
     });
 }
 
+// ---- NSDocumentController Swizzles ----
+// Cocoa calls NSDocumentController when files are double-clicked or opened via LaunchServices.
+// Providing a dummy class and intercepting openDocument prevents CoreServicesUIAgent from
+// claiming the format cannot be opened.
+
+@interface WFDocDummy : NSDocument
+@end
+@implementation WFDocDummy
+@end
+
+static Class docctrl_documentClassForType(id self, SEL _cmd, NSString *typeName) {
+    return [WFDocDummy class];
+}
+
+static void docctrl_openDocumentWithContentsOfURL_completion(id self, SEL _cmd, NSURL *url, BOOL display, void (^completionHandler)(NSDocument *, BOOL, NSError *)) {
+    if (url && [url isFileURL]) {
+        send_file_open_to_wordforge([url path]);
+    }
+    if (completionHandler) {
+        completionHandler(nil, NO, nil);
+    }
+}
+
+static id docctrl_openDocumentWithContentsOfURL_error(id self, SEL _cmd, NSURL *url, BOOL display, NSError **outError) {
+    if (url && [url isFileURL]) {
+        send_file_open_to_wordforge([url path]);
+    }
+    if (outError) {
+        *outError = nil;
+    }
+    return (id)self;
+}
+
+// ---- Apple Event Handler ----
 @interface WordForgeAppleEventHandler : NSObject
 - (void)handleOpenDocuments:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent;
 @end
@@ -106,6 +132,7 @@ static void send_file_open_to_wordforge(NSString *rawPath) {
 }
 @end
 
+// ---- NSApplicationDelegate methods ----
 static BOOL bridge_applicationOpenFile(id self, SEL _cmd, NSApplication *sender, NSString *filename) {
     send_file_open_to_wordforge(filename);
     return YES;
@@ -159,7 +186,7 @@ static void bridge_setDelegate(id self, SEL _cmd, id delegate) {
 
 __attribute__((constructor))
 static void init_wordforge_bridge(void) {
-    // Ensure control port is configured in environment for WordForge
+    // Configure default control port
     char port_str[16];
     snprintf(port_str, sizeof(port_str), "%d", WORDFORGE_DEFAULT_CONTROL_PORT);
     setenv("WORDFORGE_CONTROL_PORT", port_str, 0);
@@ -175,11 +202,36 @@ static void init_wordforge_bridge(void) {
             andEventID:kAEOpenDocuments];
     }
 
-    // Swizzle [NSApplication setDelegate:] so any delegate registered by winit is hooked
+    // Swizzle [NSApplication setDelegate:]
     Class appCls = [NSApplication class];
     Method m = class_getInstanceMethod(appCls, @selector(setDelegate:));
     if (m) {
         orig_setDelegate = (void (*)(id, SEL, id))method_getImplementation(m);
         method_setImplementation(m, (IMP)bridge_setDelegate);
+    }
+
+    // Swizzle NSDocumentController methods to eliminate "cannot open files in format" errors
+    Class docCtrlCls = [NSDocumentController class];
+    if (docCtrlCls) {
+        Method mClassForType = class_getInstanceMethod(docCtrlCls, @selector(documentClassForType:));
+        if (mClassForType) {
+            method_setImplementation(mClassForType, (IMP)docctrl_documentClassForType);
+        } else {
+            class_addMethod(docCtrlCls, @selector(documentClassForType:), (IMP)docctrl_documentClassForType, "#@:@");
+        }
+
+        Method mOpenComp = class_getInstanceMethod(docCtrlCls, @selector(openDocumentWithContentsOfURL:display:completionHandler:));
+        if (mOpenComp) {
+            method_setImplementation(mOpenComp, (IMP)docctrl_openDocumentWithContentsOfURL_completion);
+        } else {
+            class_addMethod(docCtrlCls, @selector(openDocumentWithContentsOfURL:display:completionHandler:), (IMP)docctrl_openDocumentWithContentsOfURL_completion, "v@:@c@?");
+        }
+
+        Method mOpenErr = class_getInstanceMethod(docCtrlCls, @selector(openDocumentWithContentsOfURL:display:error:));
+        if (mOpenErr) {
+            method_setImplementation(mOpenErr, (IMP)docctrl_openDocumentWithContentsOfURL_error);
+        } else {
+            class_addMethod(docCtrlCls, @selector(openDocumentWithContentsOfURL:display:error:), (IMP)docctrl_openDocumentWithContentsOfURL_error, "@@:@c^@");
+        }
     }
 }
