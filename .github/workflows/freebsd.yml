@@ -32,7 +32,7 @@ jobs:
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - name: Build and test in a FreeBSD VM

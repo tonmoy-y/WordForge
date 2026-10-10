@@ -72,11 +72,11 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: tonmoy-y/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - uses: dtolnay/rust-toolchain@stable
@@ -131,11 +131,11 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: tonmoy-y/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - uses: dtolnay/rust-toolchain@stable
@@ -190,11 +190,11 @@ jobs:
       NFPM_VERSION: 2.47.0
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: tonmoy-y/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - name: Install build and packaging tools
@@ -286,11 +286,11 @@ jobs:
       TRUNK_VERSION: 0.21.14
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: tonmoy-y/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - uses: dtolnay/rust-toolchain@stable
@@ -329,12 +329,12 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: tonmoy-y/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
       # Synced into the VM with the sources.
       - name: Check out craft-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: tonmoy-y/craft-fonts
+          repository: storytold/craft-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
           path: craft-fonts
       - name: Build in a FreeBSD VM
