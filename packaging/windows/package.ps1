@@ -109,6 +109,7 @@ Copy-Item (Join-Path $Stage '*.exe') $Portable
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }
+}
 # Builds made with fallback fonts embed its fonts: ship their licences.
 $fontDir = $env:FONTS_DIR
 if ($fontDir) {

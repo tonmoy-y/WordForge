@@ -28,13 +28,6 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
-      # The Japanese font tests run against cjk-fonts (an optional build input; they skip without it).
-      - name: Check out cjk-fonts
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
-        with:
-          repository: tonmoy-y/cjk-fonts
-          ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: cjk-fonts
       - name: Build and test in a FreeBSD VM
         uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1
         with:
@@ -53,4 +46,4 @@ jobs:
             git config --global --add safe.directory "*"
             rustc --version
             CARGO_PROFILE_DEV_DEBUG=0 cargo build --workspace --all-targets --locked
-            FONTS_DIR="$PWD/cjk-fonts" CARGO_PROFILE_DEV_DEBUG=0 cargo test --workspace --locked
+            CARGO_PROFILE_DEV_DEBUG=0 cargo test --workspace --locked
