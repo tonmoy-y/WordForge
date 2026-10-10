@@ -8,9 +8,6 @@
 //! (Windows display language, macOS preferred languages, `LANG`/`LC_*` elsewhere) when there is a
 //! catalog for it, and English otherwise. File ▸ Options ▸ Interface language picks one by hand.
 //!
-//! This is the system PdfCraft and PhotoCraft use (`pdfcraft/crates/ui-egui/src/i18n`), so the
-//! catalog format and habits carry over between the Crafting Apps.
-//!
 //! # Adding a language
 //! 1. Add `xx.tsv` next to `zh-hans.tsv` (copy its header; translate from the *meaning* of the
 //!    English text, clean-room: never from Microsoft Word's or another product's localisation).

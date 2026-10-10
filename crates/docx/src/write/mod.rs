@@ -696,7 +696,7 @@ fn theme_xml(doc: &Document) -> Vec<u8> {
     let s = &doc.settings;
     let names = ["dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "hlink", "folHlink"];
     let mut w = W::new();
-    let name = if s.theme_name.is_empty() { "Craft" } else { s.theme_name.as_str() };
+    let name = if s.theme_name.is_empty() { "WordForge" } else { s.theme_name.as_str() };
     w.open("a:theme", &[("xmlns:a", "http://schemas.openxmlformats.org/drawingml/2006/main"), ("name", name)]);
     w.open("a:themeElements", &[]);
     w.open("a:clrScheme", &[("name", name)]);

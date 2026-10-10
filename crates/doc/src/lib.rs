@@ -300,7 +300,7 @@ impl Default for Settings {
             major_font: styles::HEADING_FONT.into(),
             minor_font: styles::BODY_FONT.into(),
             theme_colors: THEME_COLORS.to_vec(),
-            theme_name: "Craft".into(),
+            theme_name: "WordForge".into(),
             footnote_format: section::NumFormat::Decimal,
             endnote_format: section::NumFormat::LowerRoman,
             protection: None,

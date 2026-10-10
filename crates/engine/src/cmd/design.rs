@@ -10,7 +10,7 @@ use crate::{CmdError, CmdResult, CommandSpec, Session, p};
 /// Our own themes: (name, heading font, body font, accent colours).
 pub const THEMES: &[(&str, &str, &str, [Rgb; 6])] = &[
     (
-        "Craft",
+        "WordForge",
         styles::HEADING_FONT,
         styles::BODY_FONT,
         [Rgb(0x15, 0x60, 0x82), Rgb(0xE9, 0x71, 0x32), Rgb(0x19, 0x6B, 0x24), Rgb(0x0F, 0x9E, 0xD5), Rgb(0xA0, 0x2B, 0x93), Rgb(0x4E, 0xA7, 0x2E)],

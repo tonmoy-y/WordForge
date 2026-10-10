@@ -51,9 +51,9 @@ jobs:
           if grep -oE '<Icon Id="[^"]*"' packaging/windows/wordforge.wxs | grep -vE '\.(ico|exe)"$'; then
             echo "::error::Icon Id must end in .ico or .exe"; exit 1
           fi
-          # Each Craft app needs its own MSI UpgradeCode and component GUIDs. Sharing one with a
-          # sibling makes Windows Installer treat the two apps as versions of one product (#4).
-          # Codes the sibling apps' installers use:
+          # Each app needs its own MSI UpgradeCode and component GUIDs. Sharing one with another
+          # app makes Windows Installer treat the two apps as versions of one product (#4).
+          # Codes known other installers use:
           siblings='D9660F32-2D0A-4ABE-B73D-17BE25F1542C A6DE41B7-A80F-4C59-A17E-BB68065BF67E
             601C6437-08AE-4645-ADCC-27F036C2EA2F 0E8C6C5E-DE4A-4E1D-9DB0-44E8E38C2103
             31E6FB14-9DBC-41DD-B24B-26B71FB31B62 15933017-925B-4963-8992-52000EB26AAA
@@ -64,7 +64,7 @@ jobs:
             49E87D30-BB68-4896-AA1D-F45C833CFC3C DE018EF3-EE87-4E36-9F76-0B7B060A195E'
           for code in $siblings; do
             if grep -qi "$code" packaging/windows/wordforge.wxs; then
-              echo "::error file=packaging/windows/wordforge.wxs::$code belongs to a sibling Craft app's MSI; generate a new GUID"; exit 1
+              echo "::error file=packaging/windows/wordforge.wxs::$code belongs to another app's MSI; generate a new GUID"; exit 1
             fi
           done
           if [ "$(grep -oiE '(UpgradeCode|Guid)="[0-9A-F-]{36}"' packaging/windows/wordforge.wxs | cut -d'"' -f2 | sort -f | uniq -di)" ]; then

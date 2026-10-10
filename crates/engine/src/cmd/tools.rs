@@ -392,7 +392,7 @@ pub fn specs() -> Vec<CommandSpec> {
         .pure(),
         CommandSpec::new("design.effects", "Effects", "Design › Document Formatting", |s, v| {
             s.doc.settings.theme_name =
-                format!("{} ({})", s.doc.settings.theme_name.split(" (").next().unwrap_or("Craft"), p::str(v, "name").unwrap_or("Subtle"));
+                format!("{} ({})", s.doc.settings.theme_name.split(" (").next().unwrap_or("WordForge"), p::str(v, "name").unwrap_or("Subtle"));
             sel_result(s)
         }),
         CommandSpec::new("view.immersive", "Immersive Reader", "View › Immersive", |s, _| {

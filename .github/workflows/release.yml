@@ -72,13 +72,13 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
-      - name: Check out craft-fonts
+      # Optional font input (docs: tonmoy-y/cjk-fonts docs/integration.md); releases always embed it.
+      - name: Check out cjk-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: storytold/craft-fonts
+          repository: tonmoy-y/cjk-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: craft-fonts
+          path: cjk-fonts
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
@@ -96,8 +96,8 @@ jobs:
         run: packaging/macos/import-cert.sh
       - name: Build, sign, notarize
         env:
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
-          CRAFT_FONTS_REQUIRED: "1"
+          FONTS_DIR: ${{ github.workspace }}/cjk-fonts
+          FONTS_REQUIRED: "1"
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -131,13 +131,13 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
-      - name: Check out craft-fonts
+      # Optional font input (docs: tonmoy-y/cjk-fonts docs/integration.md); releases always embed it.
+      - name: Check out cjk-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: storytold/craft-fonts
+          repository: tonmoy-y/cjk-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: craft-fonts
+          path: cjk-fonts
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -154,8 +154,8 @@ jobs:
       - name: Build, sign, package
         shell: pwsh
         env:
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
-          CRAFT_FONTS_REQUIRED: "1"
+          FONTS_DIR: ${{ github.workspace }}/cjk-fonts
+          FONTS_REQUIRED: "1"
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -190,13 +190,13 @@ jobs:
       NFPM_VERSION: 2.47.0
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
-      - name: Check out craft-fonts
+      # Optional font input (docs: tonmoy-y/cjk-fonts docs/integration.md); releases always embed it.
+      - name: Check out cjk-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: storytold/craft-fonts
+          repository: tonmoy-y/cjk-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: craft-fonts
+          path: cjk-fonts
       - name: Install build and packaging tools
         run: |
           sudo apt-get update
@@ -215,8 +215,8 @@ jobs:
         run: cargo xtask version set "$WORDFORGE_VERSION"
       - name: Build and package (AppImage, deb, rpm, tar.gz)
         env:
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
-          CRAFT_FONTS_REQUIRED: "1"
+          FONTS_DIR: ${{ github.workspace }}/cjk-fonts
+          FONTS_REQUIRED: "1"
         run: packaging/linux/package.sh
       - name: Check the packages
         run: |
@@ -286,13 +286,13 @@ jobs:
       TRUNK_VERSION: 0.21.14
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
-      - name: Check out craft-fonts
+      # Optional font input (docs: tonmoy-y/cjk-fonts docs/integration.md); releases always embed it.
+      - name: Check out cjk-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: storytold/craft-fonts
+          repository: tonmoy-y/cjk-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: craft-fonts
+          path: cjk-fonts
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -309,8 +309,8 @@ jobs:
         run: cargo xtask version set "$WORDFORGE_VERSION"
       - name: Build and zip
         env:
-          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
-          CRAFT_FONTS_REQUIRED: "1"
+          FONTS_DIR: ${{ github.workspace }}/cjk-fonts
+          FONTS_REQUIRED: "1"
         run: packaging/web/package.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -329,14 +329,14 @@ jobs:
       WORDFORGE_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
-      # Optional font input (docs: storytold/craft-fonts docs/integration.md); releases always embed it.
+      # Optional font input (docs: tonmoy-y/cjk-fonts docs/integration.md); releases always embed it.
       # Synced into the VM with the sources.
-      - name: Check out craft-fonts
+      - name: Check out cjk-fonts
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
-          repository: storytold/craft-fonts
+          repository: tonmoy-y/cjk-fonts
           ref: abb83316d96aa59c1cf64784289e378fe9fa5695
-          path: craft-fonts
+          path: cjk-fonts
       - name: Build in a FreeBSD VM
         uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1
         with:
@@ -353,14 +353,14 @@ jobs:
             . "$HOME/.cargo/env"
             git config --global --add safe.directory "*"
             cargo run -q -p xtask -- version set "$WORDFORGE_VERSION"
-            CRAFT_FONTS_DIR="$PWD/craft-fonts" CRAFT_FONTS_REQUIRED=1 cargo build --release --locked -p wordforge -p wordforge-cli
+            FONTS_DIR="$PWD/cjk-fonts" FONTS_REQUIRED=1 cargo build --release --locked -p wordforge -p wordforge-cli
             name="wordforge-$WORDFORGE_VERSION-freebsd-x86_64"
             mkdir -p "dist/release/$name"
             cp target/release/wordforge target/release/wordforge-cli LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md README.md "dist/release/$name/"
             cp packaging/linux/ai.storyteller.wordforge.desktop "dist/release/$name/"
             cp assets/app-icon/hicolor/256x256/apps/ai.storyteller.wordforge.png "dist/release/$name/"
-            # The embedded craft-fonts' licences, as in the Linux packages (OFL-<family>.txt).
-            for f in craft-fonts/fonts/*/OFL.txt; do cp "$f" "dist/release/$name/OFL-$(basename "$(dirname "$f")").txt"; done
+            # The embedded cjk-fonts' licences, as in the Linux packages (OFL-<family>.txt).
+            for f in cjk-fonts/fonts/*/OFL.txt; do cp "$f" "dist/release/$name/OFL-$(basename "$(dirname "$f")").txt"; done
             tar -C dist/release -czf "dist/release/$name.tar.gz" "$name"
             rm -rf "dist/release/$name" target
       - uses: actions/upload-artifact@v4

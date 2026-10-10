@@ -1,7 +1,7 @@
 //! Liang hyphenation patterns (TeX notation, e.g. `.ab1c`, `4t1ion`): parsing and application.
 //!
 //! The bundled English set is *ours*: trained from the public-domain Moby Hyphenator word list by
-//! DesignCraft's patgen (see `examples/hyphgen.rs`). Patterns are stored in a hash map keyed by the
+//! WordForge's patgen (see `examples/hyphgen.rs`). Patterns are stored in a hash map keyed by the
 //! packed letter string, so applying them to a word costs `O(len × max_pattern_len)` lookups.
 
 use std::collections::HashMap;

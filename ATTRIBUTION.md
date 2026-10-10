@@ -2,7 +2,7 @@
 
 Every non-code asset in this repository (fonts, icons, images, example documents) is listed here with its author, source and licence. `cargo xtask assets` (part of `cargo xtask ci`) fails if an asset file is missing from this table.
 
-**Policy (mandatory):** WordForge contains **no Microsoft, Adobe, Avid or Autodesk iconography, images, templates, themes, clip art, fonts or other assets**. Every asset is original work by WordForge contributors or third-party material under an open licence (OSI open source, public domain / CC0, or a Creative Commons licence that allows redistribution). Screenshots of other vendors' software are never committed. New font files go to [storytold/craft-fonts](https://github.com/storytold/craft-fonts), not this repo.
+**Policy (mandatory):** WordForge contains **no Microsoft, Adobe, Avid or Autodesk iconography, images, templates, themes, clip art, fonts or other assets**. Every asset is original work by WordForge contributors or third-party material under an open licence (OSI open source, public domain / CC0, or a Creative Commons licence that allows redistribution). Screenshots of other vendors' software are never committed. Additional font files are managed via upstream open font repositories, not this repo.
 
 Generated-in-code art is original and has no file to list: the UI icon set (`crates/ui-egui/src/icons.rs`), the sample documents and templates (`crates/engine/src/sample.rs`), the table and style previews, and theme colours (`crates/engine/src/cmd/design.rs`).
 
@@ -50,4 +50,4 @@ Generated-in-code art is original and has no file to list: the UI icon set (`cra
 | `docs/images/dark.png` | WordForge contributors | screenshot of WordForge itself (sample document written for WordForge, rendered by `ui_shot`) | MIT OR Apache-2.0 | Original; no Microsoft UI or assets |
 | `docs/images/backstage.png` | WordForge contributors | screenshot of WordForge itself (sample document written for WordForge, rendered by `ui_shot`) | MIT OR Apache-2.0 | Original; no Microsoft UI or assets |
 | `docs/images/layout.png` | WordForge contributors | screenshot of WordForge itself (sample document written for WordForge, rendered by `ui_shot`) | MIT OR Apache-2.0 | Original; no Microsoft UI or assets |
-| fonts (optional build input, not files in this repo): BIZ UDPGothic, BIZ UDMincho, Shippori Mincho | see https://github.com/storytold/craft-fonts/blob/main/ATTRIBUTION.md | embedded only when built with `CRAFT_FONTS_DIR` (all official releases) | OFL-1.1 | Japanese UI and document fallback |
+| fonts (optional build input, not files in this repo): BIZ UDPGothic, BIZ UDMincho, Shippori Mincho | upstream open fonts distribution | embedded only when built with fallback fonts (all official releases) | OFL-1.1 | Japanese UI and document fallback |

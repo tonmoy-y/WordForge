@@ -449,7 +449,7 @@ fn thesaurus(s: &mut Session, v: &Value) -> CmdResult {
         ("sad", &["unhappy", "sorrowful", "downcast", "gloomy"]),
         ("important", &["significant", "key", "vital", "essential", "major"]),
         ("show", &["display", "reveal", "present", "demonstrate"]),
-        ("make", &["create", "build", "produce", "craft", "form"]),
+        ("make", &["create", "build", "produce", "construct", "form"]),
         ("use", &["employ", "apply", "utilize", "operate"]),
         ("help", &["assist", "aid", "support", "serve"]),
         ("start", &["begin", "launch", "open", "initiate"]),

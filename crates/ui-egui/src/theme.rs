@@ -123,7 +123,7 @@ impl Tokens {
     }
 }
 
-/// Install the UI fonts (Inter, JetBrains Mono) and the craft-fonts CJK interface faces if built
+/// Install the UI fonts (Inter, JetBrains Mono) and the fallback CJK interface faces if built
 /// in, Japanese first.
 pub fn install_fonts(ctx: &egui::Context) {
     install_fonts_for(ctx, false);

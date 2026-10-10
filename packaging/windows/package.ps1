@@ -109,10 +109,10 @@ Copy-Item (Join-Path $Stage '*.exe') $Portable
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }
-}
-# Builds made with craft-fonts (CRAFT_FONTS_DIR) embed its fonts: ship their licences.
-if ($env:CRAFT_FONTS_DIR) {
-  foreach ($ofl in Get-ChildItem -Path (Join-Path $env:CRAFT_FONTS_DIR 'fonts\*\OFL.txt') -ErrorAction SilentlyContinue) {
+# Builds made with fallback fonts embed its fonts: ship their licences.
+$fontDir = $env:FONTS_DIR
+if ($fontDir) {
+  foreach ($ofl in Get-ChildItem -Path (Join-Path $fontDir 'fonts\*\OFL.txt') -ErrorAction SilentlyContinue) {
     Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
   }
 }

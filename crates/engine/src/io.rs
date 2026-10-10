@@ -3,7 +3,7 @@
 use wordforge_doc::Document;
 
 /// Formats WordForge opens.
-pub const OPEN_EXTS: &[&str] = &["docx", "docm", "dotx", "txt", "md", "markdown", "html", "htm", "rtf", "odt", "wcraft.json", "json"];
+pub const OPEN_EXTS: &[&str] = &["docx", "docm", "dotx", "txt", "md", "markdown", "html", "htm", "rtf", "odt", "wforge.json", "json"];
 /// Formats WordForge saves (Save As).
 pub const SAVE_EXTS: &[&str] = &["docx", "pdf", "txt", "md", "html", "rtf", "odt", "png", "json"];
 

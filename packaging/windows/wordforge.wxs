@@ -7,7 +7,7 @@
   Per-machine install into Program Files with a Start Menu shortcut.
 
   UpgradeCode and the component GUIDs below belong to WordForge alone. Never copy them from (or
-  into) a sibling Craft app: Windows Installer treats every package sharing an UpgradeCode as one
+  into) another application: Windows Installer treats every package sharing an UpgradeCode as one
   product, so a shared code makes one app's installer refuse to install ("a newer version is
   already installed") or silently uninstall the other. packaging-lint.yml checks this.
 -->

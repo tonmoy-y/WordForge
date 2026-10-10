@@ -16,7 +16,7 @@ use skrifa::{GlyphId, MetadataProvider};
 pub const FALLBACK_FAMILY: &str = "Source Sans 3";
 
 /// The bundled fonts (OFL), as font file bytes. Japanese fonts are not bundled: they come from
-/// the optional craft-fonts build input ([`crate::japanese_document_fonts`]).
+/// the optional CJK fonts build input ([`crate::japanese_document_fonts`]).
 pub fn bundled() -> &'static [&'static [u8]] {
     BUNDLED
 }
@@ -498,13 +498,13 @@ fn style_italic(style: &str) -> bool {
 }
 
 impl FontDb {
-    /// A database holding the bundled fonts, then the craft-fonts Japanese faces (Mincho first,
+    /// A database holding the bundled fonts, then the fallback Japanese faces (Mincho first,
     /// so they are the fallback for Japanese text after the requested and bundled fonts; empty
-    /// without `CRAFT_FONTS_DIR`), whose system font scan reads `font_dirs`.
+    /// without `FONTS_DIR`), whose system font scan reads `font_dirs`.
     pub fn with_font_dirs(font_dirs: Vec<std::path::PathBuf>) -> Self {
         let mut faces = Vec::new();
-        let craft = crate::japanese_document_fonts().into_iter().map(|f| f.bytes);
-        for data in BUNDLED.iter().copied().chain(craft) {
+        let extra_fonts = crate::japanese_document_fonts().into_iter().map(|f| f.bytes);
+        for data in BUNDLED.iter().copied().chain(extra_fonts) {
             for (i, family, style, coords) in enumerate_faces(data) {
                 if let Some(f) = make_face(FontBytes::Static(data), i, family, style, coords) {
                     faces.push(Arc::new(f));
