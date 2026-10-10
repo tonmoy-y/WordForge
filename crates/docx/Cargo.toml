@@ -1,0 +1,22 @@
+[package]
+name = "wordforge-docx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge DOCX (OOXML WordprocessingML) reader and writer"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-doc = { workspace = true }
+wordforge-geom = { workspace = true }
+quick-xml = { workspace = true }
+zip = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+image = { workspace = true }
+zip = { workspace = true }

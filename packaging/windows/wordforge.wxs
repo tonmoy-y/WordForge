@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WordForge MSI (WiX Toolset v5: `dotnet tool install -g wix`). Built by package.ps1:
+
+    wix build wordforge.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
+
+  Per-machine install into Program Files with a Start Menu shortcut.
+
+  UpgradeCode and the component GUIDs below belong to WordForge alone. Never copy them from (or
+  into) a sibling Craft app: Windows Installer treats every package sharing an UpgradeCode as one
+  product, so a shared code makes one app's installer refuse to install ("a newer version is
+  already installed") or silently uninstall the other. packaging-lint.yml checks this.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="WordForge"
+      Manufacturer="Learning Machines LLC"
+      Version="$(var.Version)"
+      UpgradeCode="075497F9-E861-45D0-9C7F-A74F8C34E6BA"
+      Scope="perMachine"
+      Compressed="yes"
+      Language="1033">
+    <SummaryInformation Description="WordForge word processor" Manufacturer="Learning Machines LLC" />
+    <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+         (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of WordForge is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="WordForgeIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="WordForgeIcon.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/tonmoy-y/WordForge" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/tonmoy-y/WordForge" />
+    <Property Id="ARPHELPLINK" Value="https://discord.gg/artcraft" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="WordForge" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="WordForge" Level="1">
+      <ComponentGroupRef Id="WordForgeFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="WordForgeFiles" Directory="INSTALLFOLDER">
+      <Component Id="WordForgeApp" Guid="855DCEC6-9285-444F-9382-9654B83B34F6">
+        <File Id="WordForgeExe" Source="$(var.BinDir)\wordforge.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="WordForge"
+              Description="WordForge word processor" WorkingDirectory="INSTALLFOLDER" Advertise="yes"
+              Icon="WordForgeIcon.ico" IconIndex="0" />
+        </File>
+
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\wordforge.exe" Value="[#WordForgeExe]" Type="string" />
+      </Component>
+
+      <Component Id="WordForgeCli">
+        <File Id="WordForgeCliExe" Source="$(var.BinDir)\wordforge-cli.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

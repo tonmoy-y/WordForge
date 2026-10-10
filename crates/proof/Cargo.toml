@@ -1,0 +1,16 @@
+[package]
+name = "wordforge-proof"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge proofing: spelling (public-domain word list), suggestions, grammar checks, hyphenation"
+
+[lints]
+workspace = true
+
+[dependencies]
+log = { workspace = true }
+miniz_oxide = "0.8"
+
+[dev-dependencies]
+proptest = { workspace = true }

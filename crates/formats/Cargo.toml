@@ -1,0 +1,20 @@
+[package]
+name = "wordforge-formats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge import/export: plain text, Markdown, HTML, RTF and OpenDocument Text"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-doc = { workspace = true }
+wordforge-geom = { workspace = true }
+image = { workspace = true }
+quick-xml = { workspace = true }
+zip = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

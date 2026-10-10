@@ -1,0 +1,31 @@
+[package]
+name = "wordforge-ui-egui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge egui front end (Word-style ribbon UI); swappable: nothing below depends on it"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-geom = { workspace = true }
+wordforge-doc = { workspace = true }
+wordforge-fonts = { workspace = true }
+wordforge-layout = { workspace = true }
+wordforge-render = { workspace = true }
+wordforge-engine = { workspace = true }
+egui = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+# The system's preferred interface languages (#8). Native: OS APIs; wasm: none (English).
+sys-locale = "0.3"
+
+[dev-dependencies]
+egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
+image = { workspace = true }
+
+[build-dependencies]
+serde_json = { workspace = true }
+toml = "1"

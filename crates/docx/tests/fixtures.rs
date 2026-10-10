@@ -1,0 +1,372 @@
+//! Hand-written minimal WordprocessingML fixtures (written for these tests from the spec).
+
+use std::io::Write;
+
+use wordforge_doc::para::{NoteKind, ShapeKind, Wrap};
+use wordforge_doc::props::{Align, TextColor, VMerge};
+use wordforge_doc::{Block, Document, InlineObject, Paragraph};
+
+const W_NS: &str = r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office""#;
+
+const ROOT_RELS: &str = r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#;
+
+pub fn zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut zw = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, bytes) in entries {
+        zw.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+        zw.write_all(bytes).unwrap();
+    }
+    zw.finish().unwrap().into_inner()
+}
+
+fn rels(list: &[(&str, &str, &str)]) -> String {
+    let mut s = String::from(r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">"#);
+    for (id, ty, target) in list {
+        let ext = if target.starts_with("http") { r#" TargetMode="External""# } else { "" };
+        s.push_str(&format!(
+            r#"<Relationship Id="{id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/{ty}" Target="{target}"{ext}/>"#
+        ));
+    }
+    s.push_str("</Relationships>");
+    s
+}
+
+/// A package with `body` as the document body and extra (path, content) parts.
+fn docx(body: &str, doc_rels: &[(&str, &str, &str)], extra: &[(&str, &str)]) -> Vec<u8> {
+    let doc = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {W_NS}><w:body>{body}</w:body></w:document>"#);
+    let r = rels(doc_rels);
+    let mut entries: Vec<(&str, &[u8])> =
+        vec![("_rels/.rels", ROOT_RELS.as_bytes()), ("word/document.xml", doc.as_bytes()), ("word/_rels/document.xml.rels", r.as_bytes())];
+    for (p, c) in extra {
+        entries.push((p, c.as_bytes()));
+    }
+    zip(&entries)
+}
+
+fn read_body(body: &str) -> Document {
+    wordforge_docx::read(&docx(body, &[], &[])).unwrap()
+}
+
+fn paras(d: &Document) -> Vec<&Paragraph> {
+    d.body.iter().filter_map(|b| b.as_para()).collect()
+}
+
+#[test]
+fn toc_complex_field_spanning_paragraphs() {
+    let body = r#"
+<w:p><w:pPr><w:pStyle w:val="TOC1"/></w:pPr>
+ <w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h \z \u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>
+ <w:hyperlink w:anchor="_Toc1"><w:r><w:t>Intro</w:t></w:r><w:r><w:tab/></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGEREF _Toc1 \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:hyperlink>
+</w:p>
+<w:p><w:hyperlink w:anchor="_Toc2"><w:r><w:t>Body</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>2</w:t></w:r></w:hyperlink></w:p>
+<w:p><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
+<w:p><w:bookmarkStart w:id="0" w:name="_Toc1"/><w:r><w:t>Intro</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>
+<w:p><w:r><w:t xml:space="preserve">Page </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>7</w:t></w:r></w:fldSimple></w:p>"#;
+    let d = read_body(body);
+    let p = paras(&d);
+    assert_eq!(p.len(), 5);
+    assert_eq!(p[0].text, "\u{FFFC}Intro\t\u{FFFC}");
+    assert_eq!(p[0].objects[0], InlineObject::Field { instr: r#"TOC \o "1-3" \h \z \u"#.into(), result: String::new(), locked: false });
+    assert_eq!(p[0].objects[1], InlineObject::Field { instr: r#"PAGEREF _Toc1 \h"#.into(), result: "1".into(), locked: false });
+    assert_eq!(p[0].props_of_char(3).link.as_deref(), Some("#_Toc1"));
+    assert_eq!(p[0].props.style.as_deref(), Some("TOC1"));
+    assert_eq!(p[1].text, "Body\t2");
+    assert_eq!(p[1].props_of_char(0).link.as_deref(), Some("#_Toc2"));
+    assert_eq!(p[2].text, "");
+    assert_eq!(p[3].objects, vec![InlineObject::BookmarkStart { name: "_Toc1".into() }, InlineObject::BookmarkEnd { name: "_Toc1".into() }]);
+    assert_eq!(p[4].plain_text(), "Page 7");
+    assert_eq!(p[4].objects[0], InlineObject::Field { instr: "PAGE".into(), result: "7".into(), locked: false });
+    // And it writes back out and reads the same.
+    let again = wordforge_docx::read(&wordforge_docx::write(&d).unwrap()).unwrap();
+    assert_eq!(again.body, d.body);
+}
+
+#[test]
+fn hyperlink_runs_and_wrappers() {
+    let body = r#"
+<w:p>
+ <w:hyperlink r:id="rId5" w:history="1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>site</w:t></w:r></w:hyperlink>
+ <w:hyperlink r:id="rId5" w:anchor="frag"><w:r><w:t>X</w:t></w:r></w:hyperlink>
+ <w:smartTag><w:r><w:t>A</w:t></w:r></w:smartTag><w:customXml><w:r><w:t>B</w:t></w:r></w:customXml>
+ <w:sdt><w:sdtPr/><w:sdtContent><w:r><w:t>C</w:t></w:r></w:sdtContent></w:sdt>
+ <w:r><w:sym w:font="Wingdings" w:char="F04A"/><w:noBreakHyphen/><w:softHyphen/><w:cr/><w:br w:type="page"/><w:br w:type="column"/><w:t xml:space="preserve"> e&amp;</w:t></w:r>
+ <w:proofErr w:type="spellStart"/><w:r><w:rPr><w:b w:val="false"/><w:i w:val="0"/><w:caps w:val="off"/><w:strike w:val="true"/><w:color w:val="auto"/></w:rPr><w:t>T</w:t></w:r>
+</w:p>
+<w:sdt><w:sdtContent><w:p><w:r><w:t>in block sdt</w:t></w:r></w:p></w:sdtContent></w:sdt>"#;
+    let bytes = docx(body, &[("rId5", "hyperlink", "https://example.org/")], &[]);
+    let d = wordforge_docx::read(&bytes).unwrap();
+    let p = paras(&d);
+    assert_eq!(p[0].text, "siteXABC\u{F04A}\u{2011}\u{AD}\n\u{C}\u{E} e&T");
+    assert_eq!(p[0].props_of_char(0).link.as_deref(), Some("https://example.org/"));
+    assert_eq!(p[0].props_of_char(0).style.as_deref(), Some("Hyperlink"));
+    assert_eq!(p[0].props_of_char(4).link.as_deref(), Some("https://example.org/#frag"));
+    let sym_off = p[0].text.find('\u{F04A}').unwrap();
+    assert_eq!(p[0].props_of_char(sym_off).font.as_deref(), Some("Wingdings"));
+    let t = p[0].props_of_char(p[0].text.len() - 1);
+    assert_eq!((t.bold, t.italic, t.caps, t.strike, t.color), (Some(false), Some(false), Some(false), Some(true), Some(TextColor::Auto)));
+    assert_eq!(p[1].text, "in block sdt");
+}
+
+#[test]
+fn alternate_content_choice_and_fallback() {
+    let body = r#"
+<w:p><w:r><mc:AlternateContent>
+  <mc:Choice Requires="wps"><w:drawing><wp:anchor behindDoc="0" distL="12700"><wp:positionH relativeFrom="page"><wp:posOffset>127000</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="914400" cy="457200"/><wp:wrapSquare wrapText="bothSides"/><wp:docPr id="1" name="Text Box 1"/>
+    <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:prstGeom prst="rect"/></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>boxed</w:t></w:r></w:p></w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic>
+  </wp:anchor></w:drawing></mc:Choice>
+  <mc:Fallback><w:pict><v:shape style="width:72pt;height:36pt"><v:textbox><w:txbxContent><w:p><w:r><w:t>old</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback>
+</mc:AlternateContent></w:r></w:p>
+<w:p><mc:AlternateContent><mc:Choice Requires="w99"><w:r><w:t>future</w:t></w:r></mc:Choice><mc:Fallback><w:r><w:t>fallback text</w:t></w:r></mc:Fallback></mc:AlternateContent></w:p>"#;
+    let d = read_body(body);
+    let p = paras(&d);
+    match &p[0].objects[0] {
+        InlineObject::Shape { kind, w, h, float, story, .. } => {
+            assert_eq!((*kind, *w, *h), (ShapeKind::TextBox, 72.0, 36.0));
+            assert_eq!(float.wrap, Wrap::Square);
+            assert_eq!(float.x, 10.0);
+            assert_eq!(float.dist, 1.0);
+            let s = d.parts.get(&story.unwrap()).unwrap();
+            assert_eq!(s.blocks[0].as_para().unwrap().text, "boxed");
+        }
+        o => panic!("{o:?}"),
+    }
+    assert_eq!(p[1].text, "fallback text");
+}
+
+#[test]
+fn table_look_bitmask_and_legacy_merges() {
+    let body = r#"
+<w:tbl>
+ <w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="5000" w:type="pct"/><w:jc w:val="center"/><w:tblLook w:val="04A0"/></w:tblPr>
+ <w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>
+ <w:tr><w:tc><w:tcPr><w:hMerge w:val="restart"/></w:tcPr><w:p><w:r><w:t>wide</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:hMerge/></w:tcPr><w:p/></w:tc><w:tc><w:tcPr><w:vMerge w:val="restart"/><w:shd w:val="clear" w:fill="FF0000"/></w:tcPr><w:p/></w:tc></w:tr>
+ <w:tr><w:trPr><w:trHeight w:val="400"/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr><w:p/></w:tc><w:sdt><w:sdtContent><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc></w:sdtContent></w:sdt></w:tr>
+</w:tbl>
+<w:tbl><w:tblPr><w:tblLook w:firstRow="0" w:lastRow="1" w:firstColumn="1" w:lastColumn="0" w:noHBand="1" w:noVBand="0"/></w:tblPr><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl>
+<w:p/>"#;
+    let d = read_body(body);
+    let Block::Table(t) = &*d.body[0] else { panic!() };
+    assert_eq!(t.props.width_pct, Some(100.0));
+    assert_eq!(t.props.align, Some(Align::Center));
+    let l = t.props.look;
+    assert!(l.header_row && l.first_column && l.banded_rows && !l.banded_columns && !l.total_row && !l.last_column);
+    assert_eq!(t.rows[0].cells.len(), 2);
+    assert_eq!(t.rows[0].cells[0].span(), 2);
+    assert_eq!(t.rows[0].cells[1].props.vmerge, VMerge::Restart);
+    assert_eq!(t.rows[1].cells[1].props.vmerge, VMerge::Continue);
+    assert_eq!(t.rows[1].props.height, Some(20.0));
+    assert_eq!(t.grid, vec![100.0, 100.0, 100.0]);
+    let Block::Table(t2) = &*d.body[1] else { panic!() };
+    let l = t2.props.look;
+    assert!(!l.header_row && l.total_row && l.first_column && !l.last_column && !l.banded_rows && l.banded_columns);
+}
+
+#[test]
+fn styles_numbering_settings_notes_comments_from_parts() {
+    let styles = format!(
+        r#"<w:styles {W_NS}>
+ <w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:asciiTheme="minorHAnsi" w:hAnsiTheme="minorHAnsi"/><w:sz w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+ <w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/></w:style>
+ <w:style w:type="paragraph" w:styleId="1"><w:name w:val="heading 1"/><w:basedOn w:val="a"/><w:next w:val="a"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:rFonts w:asciiTheme="majorHAnsi"/><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+ <w:style w:type="paragraph" w:customStyle="1" w:styleId="Fancy"><w:name w:val="Fancy"/><w:basedOn w:val="Fancy"/></w:style>
+ <w:style w:type="table" w:styleId="Grid"><w:name w:val="Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4"/></w:tblBorders></w:tblPr><w:tblStylePr w:type="firstRow"><w:rPr><w:b/></w:rPr><w:tcPr><w:shd w:val="clear" w:fill="4472C4"/></w:tcPr></w:tblStylePr></w:style>
+</w:styles>"#
+    );
+    let theme = r#"<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="T"><a:themeElements><a:clrScheme name="T"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:accent1><a:srgbClr val="4472C4"/></a:accent1></a:clrScheme><a:fontScheme name="T"><a:majorFont><a:latin typeface="Major Face"/></a:majorFont><a:minorFont><a:latin typeface="Minor Face"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>"#;
+    let numbering = format!(
+        r#"<w:numbering {W_NS}><w:abstractNum w:abstractNumId="7"><w:name w:val="L"/><w:lvl w:ilvl="0"><w:start w:val="3"/><w:numFmt w:val="upperLetter"/><w:lvlText w:val="%1)"/><w:lvlJc w:val="right"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="bullet"/><w:suff w:val="space"/><w:lvlText w:val="o"/><w:rPr><w:rFonts w:ascii="Courier New"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId="2"><w:abstractNumId w:val="7"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="5"/></w:lvlOverride></w:num></w:numbering>"#
+    );
+    let settings = format!(
+        r#"<w:settings {W_NS}><w:trackRevisions/><w:defaultTabStop w:val="708"/><w:evenAndOddHeaders w:val="1"/><w:footnotePr><w:numFmt w:val="lowerRoman"/></w:footnotePr></w:settings>"#
+    );
+    let footnotes = format!(
+        r#"<w:footnotes {W_NS}><w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:id="1"><w:p><w:r><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> Note text</w:t></w:r></w:p></w:footnote></w:footnotes>"#
+    );
+    let comments = format!(
+        r#"<w:comments {W_NS}><w:comment w:id="5" w:author="Zed" w:initials="Z" w:date="2026-01-01T00:00:00Z"><w:p><w:r><w:annotationRef/></w:r><w:r><w:t>Look</w:t></w:r></w:p></w:comment></w:comments>"#
+    );
+    let header = format!(r#"<w:hdr {W_NS}><w:p><w:r><w:t>H</w:t></w:r></w:p></w:hdr>"#);
+    let core = r#"<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Doc Title</dc:title><cp:revision>3</cp:revision></cp:coreProperties>"#;
+    let body = r#"
+<w:p><w:pPr><w:pStyle w:val="1"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="2"/></w:numPr></w:pPr><w:commentRangeStart w:id="5"/><w:r><w:rPr><w:rFonts w:asciiTheme="majorHAnsi"/></w:rPr><w:t>Heading</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r><w:r><w:commentReference w:id="5"/></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="a"/></w:pPr><w:ins w:id="1" w:author="I" w:date="2026-01-01T00:00:00Z"><w:r><w:t>new</w:t></w:r></w:ins><w:del w:id="2" w:author="I"><w:r><w:delText>old</w:delText></w:r></w:del></w:p>
+<w:sectPr><w:headerReference w:type="default" r:id="rId9"/><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/><w:cols w:space="708"/><w:titlePg w:val="0"/></w:sectPr>"#;
+    let doc_rels = [
+        ("rId1", "styles", "styles.xml"),
+        ("rId2", "theme", "theme/theme1.xml"),
+        ("rId3", "numbering", "numbering.xml"),
+        ("rId4", "settings", "/word/settings.xml"),
+        ("rId5", "footnotes", "footnotes.xml"),
+        ("rId6", "comments", "comments.xml"),
+        ("rId9", "header", "header1.xml"),
+    ];
+    let root_rels = r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>"#;
+    let doc = format!(r#"<w:document {W_NS}><w:body>{body}</w:body></w:document>"#);
+    let r = rels(&doc_rels);
+    let bytes = zip(&[
+        ("_rels/.rels", root_rels.as_bytes()),
+        ("word/document.xml", doc.as_bytes()),
+        ("word/_rels/document.xml.rels", r.as_bytes()),
+        ("word/styles.xml", styles.as_bytes()),
+        ("word/theme/theme1.xml", theme.as_bytes()),
+        ("word/numbering.xml", numbering.as_bytes()),
+        ("word/settings.xml", settings.as_bytes()),
+        ("word/footnotes.xml", footnotes.as_bytes()),
+        ("word/comments.xml", comments.as_bytes()),
+        ("word/header1.xml", header.as_bytes()),
+        ("docProps/core.xml", core.as_bytes()),
+    ]);
+    let d = wordforge_docx::read(&bytes).unwrap();
+    // Styles: localized default id renamed to Normal; display names mapped.
+    let h = d.styles.get("1").unwrap();
+    assert_eq!(h.name, "Heading 1");
+    assert_eq!(h.based_on.as_deref(), Some("Normal"));
+    assert!(h.builtin && h.quick);
+    assert_eq!(h.chr.font.as_deref(), Some("Major Face"));
+    assert!(d.styles.get("Normal").is_some());
+    assert_eq!(d.styles.get("Fancy").unwrap().based_on, None, "self-reference dropped");
+    assert!(!d.styles.get("Fancy").unwrap().builtin);
+    assert_eq!(d.styles.default_chr.font.as_deref(), Some("Minor Face"));
+    assert_eq!(d.styles.default_chr.size, Some(11.0));
+    let g = d.styles.get("Grid").unwrap().table.as_ref().unwrap();
+    assert_eq!(g.header_fill, Some(wordforge_doc::Rgb(0x44, 0x72, 0xC4)));
+    assert_eq!(g.header_chr.bold, Some(true));
+    assert_eq!(d.settings.theme_colors[4], wordforge_doc::Rgb(0x44, 0x72, 0xC4));
+    assert_eq!(d.settings.major_font, "Major Face");
+    // Numbering.
+    let lv = d.numbering.level(2, 0).unwrap();
+    assert_eq!((lv.start, lv.text.as_str(), lv.indent, lv.hanging, lv.align), (3, "%1)", 36.0, 18.0, Align::Right));
+    let lv1 = d.numbering.level(2, 1).unwrap();
+    assert_eq!(lv1.chr.font.as_deref(), Some("Courier New"));
+    assert_eq!(lv1.suffix, wordforge_doc::numbering::LevelSuffix::Space);
+    assert_eq!(d.numbering.num(2).unwrap().start_overrides, vec![(0, 5)]);
+    // Settings.
+    assert!(d.settings.track_changes && d.settings.even_odd_headers);
+    assert_eq!(d.settings.default_tab, 35.4);
+    assert_eq!(d.settings.footnote_format, wordforge_doc::section::NumFormat::LowerRoman);
+    // Body.
+    let p = paras(&d);
+    assert_eq!(p[0].props.style.as_deref(), Some("1"));
+    assert_eq!(p[0].props.numbering, Some(wordforge_doc::props::NumRef { num: 2, level: 1 }));
+    assert_eq!(p[0].props_of_char(4).font.as_deref(), Some("Major Face"));
+    match &p[0].objects[..] {
+        [InlineObject::CommentStart { id: 5 }, InlineObject::NoteRef { kind: NoteKind::Footnote, id, .. }, InlineObject::CommentEnd { id: 5 }] => {
+            let note = d.parts.get(id).unwrap().blocks[0].as_para().unwrap();
+            assert_eq!(note.text, " Note text");
+        }
+        o => panic!("{o:?}"),
+    }
+    let c = d.comments.get(&5).unwrap();
+    assert_eq!((c.author.as_str(), c.initials.as_str()), ("Zed", "Z"));
+    assert_eq!(d.parts.get(&c.part).unwrap().blocks[0].as_para().unwrap().text, "Look");
+    assert_eq!(p[1].props.style.as_deref(), Some("Normal"));
+    assert_eq!(p[1].text, "newold");
+    assert_eq!(d.revisions.len(), 2);
+    assert_eq!(p[1].props_of_char(0).ins, Some(0));
+    assert_eq!(p[1].props_of_char(3).del, Some(1));
+    // Section + header.
+    let s = &d.last_section;
+    assert!(s.landscape);
+    assert_eq!((s.page_w, s.page_h), (841.9, 595.3));
+    assert!(!s.title_page);
+    let hid = s.headers.default.unwrap();
+    assert_eq!(d.parts.get(&hid).unwrap().blocks[0].as_para().unwrap().text, "H");
+    assert_eq!(d.core.title, "Doc Title");
+    assert_eq!(d.core.revision, 3);
+}
+
+#[test]
+fn vml_image_and_inline_drawing() {
+    let png: &[u8] = b"\x89PNG\r\n\x1a\nnot really a png";
+    let body = r#"
+<w:p><w:r><w:pict><v:shape style="width:1in;height:36pt" alt="vml pic"><v:imagedata r:id="rIdImg" o:title="t"/></v:shape></w:pict></w:r>
+<w:r><w:drawing><wp:inline><wp:extent cx="1270000" cy="635000"/><wp:docPr id="3" name="P" descr="alt text"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:blipFill><a:blip r:embed="rIdImg"/><a:srcRect l="10000"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>
+<w:r><w:drawing><wp:inline><wp:extent cx="1" cy="1"/><a:graphic><a:graphicData><pic:pic><pic:blipFill><a:blip r:embed="rIdMissing"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"#;
+    let doc = format!(r#"<w:document {W_NS}><w:body>{body}</w:body></w:document>"#);
+    let r = rels(&[("rIdImg", "image", "media/pic.png"), ("rIdMissing", "image", "media/nope.png")]);
+    let bytes = zip(&[
+        ("_rels/.rels", ROOT_RELS.as_bytes()),
+        ("word/document.xml", doc.as_bytes()),
+        ("word/_rels/document.xml.rels", r.as_bytes()),
+        ("word/media/pic.png", png),
+    ]);
+    let d = wordforge_docx::read(&bytes).unwrap();
+    let p = paras(&d);
+    assert_eq!(p[0].objects.len(), 2);
+    match (&p[0].objects[0], &p[0].objects[1]) {
+        (InlineObject::Image { media: m1, w: w1, h: h1, alt: a1, .. }, InlineObject::Image { media: m2, w: w2, h: h2, alt: a2, crop, .. }) => {
+            assert_eq!((m1.as_str(), *w1, *h1, a1.as_str()), ("pic.png", 72.0, 36.0, "vml pic"));
+            assert_eq!((m2.as_str(), *w2, *h2, a2.as_str()), ("pic.png", 100.0, 50.0, "alt text"));
+            assert_eq!(crop[0], 0.1);
+        }
+        o => panic!("{o:?}"),
+    }
+    assert_eq!(d.media.get("pic.png").unwrap().as_slice(), png);
+}
+
+#[test]
+fn strict_namespace_and_bad_numbers() {
+    let doc = r#"<w:document xmlns:w="http://purl.oclc.org/ooxml/wordprocessingml/main"><w:body>
+<w:p><w:pPr><w:jc w:val="end"/><w:ind w:start="1in" w:hanging="abc"/><w:spacing w:before="-50" w:line="99999999999999999999" w:lineRule="exact"/><w:outlineLvl w:val="300"/><w:numPr><w:numId w:val="-4"/></w:numPr></w:pPr>
+<w:r><w:rPr><w:sz w:val="NaN"/><w:w w:val="999999"/><w:position w:val="-1e30"/><w:color w:val="GGGGGG"/><w:highlight w:val="mauve"/><w:u w:val="squiggle"/></w:rPr><w:t>strict</w:t></w:r></w:p>
+<w:tbl><w:tblGrid><w:gridCol w:w="-5"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:gridSpan w:val="99999"/></w:tcPr><w:p/></w:tc></w:tr></w:tbl>
+<w:sectPr><w:pgSz w:w="0" w:h="x"/><w:cols w:num="-3"/><w:pgNumType w:start="-1" w:fmt="klingon"/></w:sectPr>
+</w:body></w:document>"#;
+    let bytes = zip(&[("_rels/.rels", ROOT_RELS.as_bytes()), ("word/document.xml", doc.as_bytes())]);
+    let d = wordforge_docx::read(&bytes).unwrap();
+    let p = paras(&d);
+    assert_eq!(p[0].text, "strict");
+    assert_eq!(p[0].props.align, Some(Align::Right));
+    assert_eq!(p[0].props.indent_left, Some(72.0));
+    assert_eq!(p[0].props.space_before, Some(0.0));
+    assert_eq!(p[0].props.outline_level, Some(9));
+    let c = p[0].props_of_char(0);
+    assert_eq!(c.size, None);
+    assert_eq!(c.scale, Some(600.0));
+    assert_eq!(c.color, None);
+    let Block::Table(t) = &*d.body[1] else { panic!() };
+    assert_eq!(t.rows[0].cells[0].span(), 63);
+    assert_eq!(d.last_section.page_w, 612.0);
+    assert_eq!(d.last_section.columns.count, 1);
+    // The document can be written back.
+    wordforge_docx::write(&d).unwrap();
+}
+
+#[test]
+fn unbalanced_fields_and_markers() {
+    let body = r#"
+<w:p><w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>a</w:t></w:r><w:bookmarkEnd w:id="77"/><w:commentRangeEnd w:id="3"/></w:p>
+<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>IF </w:instrText></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>MERGEFIELD x</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>X</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:instrText> = "y"</w:instrText></w:r></w:p>
+<w:bookmarkStart w:id="1" w:name="between"/>
+<w:p><w:r><w:t>after</w:t></w:r></w:p>
+<w:bookmarkEnd w:id="1"/>"#;
+    let d = read_body(body);
+    let p = paras(&d);
+    assert_eq!(p[0].text, "a");
+    assert_eq!(p[1].objects, vec![InlineObject::Field { instr: "IF X = \"y\"".into(), result: String::new(), locked: false }]);
+    assert_eq!(p[2].objects, vec![InlineObject::BookmarkStart { name: "between".into() }, InlineObject::BookmarkEnd { name: "between".into() }]);
+    assert_eq!(p[2].plain_text(), "after");
+}
+
+#[test]
+fn header_self_reference_and_escaping_targets() {
+    let hdr = format!(
+        r#"<w:hdr {W_NS}><w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rId1"/></w:sectPr></w:pPr><w:r><w:t>loop</w:t></w:r></w:p></w:hdr>"#
+    );
+    let hdr_rels = rels(&[("rId1", "header", "header1.xml")]);
+    let body = r#"<w:p><w:r><w:drawing><wp:inline><a:graphic><a:graphicData><pic:pic><pic:blipFill><a:blip r:embed="rIdEvil"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p><w:sectPr><w:headerReference w:type="default" r:id="rIdH"/><w:headerReference w:type="even" r:id="rIdH"/><w:footerReference w:type="first" r:id="rIdNone"/></w:sectPr>"#;
+    let doc = format!(r#"<w:document {W_NS}><w:body>{body}</w:body></w:document>"#);
+    let r = rels(&[("rIdH", "header", "header1.xml"), ("rIdEvil", "image", "../../../../etc/passwd"), ("rIdNone", "footer", "missing.xml")]);
+    let bytes = zip(&[
+        ("_rels/.rels", ROOT_RELS.as_bytes()),
+        ("word/document.xml", doc.as_bytes()),
+        ("word/_rels/document.xml.rels", r.as_bytes()),
+        ("word/header1.xml", hdr.as_bytes()),
+        ("word/_rels/header1.xml.rels", hdr_rels.as_bytes()),
+    ]);
+    let d = wordforge_docx::read(&bytes).unwrap();
+    assert_eq!(d.last_section.headers.default, d.last_section.headers.even);
+    assert!(d.media.is_empty());
+    let out = wordforge_docx::write(&d).unwrap();
+    wordforge_docx::read(&out).unwrap();
+}

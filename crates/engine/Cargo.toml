@@ -1,0 +1,26 @@
+[package]
+name = "wordforge-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge engine: session, selection, undo, the command registry (every action is a command), Word's command catalog, file I/O dispatch"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-geom = { workspace = true }
+wordforge-doc = { workspace = true }
+wordforge-fonts = { workspace = true }
+wordforge-layout = { workspace = true }
+wordforge-render = { workspace = true }
+wordforge-proof = { workspace = true }
+wordforge-docx = { workspace = true }
+wordforge-pdf = { workspace = true }
+wordforge-formats = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+regex = { workspace = true }
+image = { workspace = true }

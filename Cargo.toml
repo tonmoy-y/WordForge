@@ -1,0 +1,77 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*", "xtask"]
+default-members = ["crates/*", "apps/wordforge", "apps/wordforge-cli", "xtask"]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.90"
+repository = "https://github.com/tonmoy-y/WordForge"
+
+[workspace.dependencies]
+# internal
+wordforge-geom = { path = "crates/geom" }
+wordforge-doc = { path = "crates/doc" }
+wordforge-fonts = { path = "crates/fonts" }
+wordforge-layout = { path = "crates/layout" }
+wordforge-docx = { path = "crates/docx" }
+wordforge-formats = { path = "crates/formats" }
+wordforge-render = { path = "crates/render" }
+wordforge-pdf = { path = "crates/pdf" }
+wordforge-proof = { path = "crates/proof" }
+wordforge-engine = { path = "crates/engine" }
+wordforge-mcp = { path = "crates/mcp" }
+wordforge-ui-egui = { path = "crates/ui-egui" }
+
+# foundation
+kurbo = { version = "0.13", features = ["serde"] }
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+log = "0.4"
+proptest = "1"
+rayon = "1"
+unicode-bidi = "0.3"
+unicode-segmentation = "1"
+unicode-linebreak = "0.1"
+regex = { version = "1", default-features = false, features = ["std", "unicode", "perf"] }
+
+# text / rendering / formats
+skrifa = "0.47"
+harfrust = "0.13"
+vello_cpu = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+krilla = { version = "0.8", features = ["pdf"] }
+quick-xml = "0.38"
+zip = { version = "3", default-features = false, features = ["deflate"] }
+
+# ui
+egui = "0.36"
+egui_extras = { version = "0.36", default-features = false }
+eframe = { version = "0.36", default-features = false }
+egui_kittest = "0.36"
+rfd = "0.17"
+arboard = { version = "3.6", default-features = false }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 16
+debug = 0

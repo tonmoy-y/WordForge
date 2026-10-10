@@ -1,0 +1,416 @@
+//! The editing session: document, selection, undo/redo, layout, view state.
+
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use wordforge_doc::edit::Fragment;
+use wordforge_doc::props::CharProps;
+use wordforge_doc::{Document, Path, Pos, StoryRef};
+use wordforge_layout::{DocLayout, LayoutCache, LayoutOptions, ViewMode};
+
+use crate::{CmdError, Registry};
+
+/// A selection: anchor (where it started) and focus (where the caret is).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct Selection {
+    pub anchor: Pos,
+    pub focus: Pos,
+}
+
+impl Selection {
+    pub fn caret(p: Pos) -> Self {
+        Selection { anchor: p.clone(), focus: p }
+    }
+    pub fn is_collapsed(&self) -> bool {
+        self.anchor == self.focus
+    }
+    /// (start, end) in document order.
+    pub fn ordered(&self) -> (Pos, Pos) {
+        if self.anchor <= self.focus { (self.anchor.clone(), self.focus.clone()) } else { (self.focus.clone(), self.anchor.clone()) }
+    }
+}
+
+/// View state that commands can change (ribbon View tab, status bar).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewState {
+    pub zoom: f32,
+    pub mode: ViewMode,
+    pub read_mode: bool,
+    pub focus_mode: bool,
+    pub marks: bool,
+    pub ruler: bool,
+    pub gridlines: bool,
+    pub nav_pane: bool,
+    pub styles_pane: bool,
+    pub comments_pane: bool,
+    pub multi_page: bool,
+    /// Zoom to fit: "pageWidth", "onePage", "multiplePages", or empty.
+    pub fit: String,
+    pub web_width: f32,
+    pub dark_mode: bool,
+    pub show_markup: bool,
+    pub track_changes_pane: bool,
+    /// Check spelling and grammar as you type.
+    pub proofing: bool,
+}
+
+impl Default for ViewState {
+    fn default() -> Self {
+        ViewState {
+            zoom: 1.0,
+            mode: ViewMode::Print,
+            read_mode: false,
+            focus_mode: false,
+            marks: false,
+            ruler: true,
+            gridlines: false,
+            nav_pane: false,
+            styles_pane: false,
+            comments_pane: false,
+            multi_page: false,
+            fit: String::new(),
+            web_width: 800.0,
+            dark_mode: false,
+            show_markup: true,
+            track_changes_pane: false,
+            proofing: true,
+        }
+    }
+}
+
+/// Find/replace state.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct FindState {
+    pub query: String,
+    pub replace: String,
+    pub match_case: bool,
+    pub whole_word: bool,
+    pub regex: bool,
+    /// Matches from the last search: (start, end).
+    #[serde(skip)]
+    pub results: Vec<(Pos, Pos)>,
+    pub current: usize,
+}
+
+struct Undo {
+    label: String,
+    doc: Document,
+    sel: Selection,
+}
+
+/// An editing session.
+pub struct Session {
+    pub doc: Document,
+    pub sel: Selection,
+    pub view: ViewState,
+    /// Formatting picked with a collapsed caret, applied to the next typed text.
+    pub pending: Option<CharProps>,
+    pub path: Option<std::path::PathBuf>,
+    pub dirty: bool,
+    pub clipboard: Option<Fragment>,
+    /// Plain text mirror of the clipboard (for the system clipboard).
+    pub clipboard_text: String,
+    pub find: FindState,
+    /// Page x the caret tries to keep on Up/Down.
+    pub goal_x: Option<f32>,
+    /// Page the caret was last on (headers/footers repeat on many pages).
+    pub page_hint: usize,
+    pub registry: Arc<Registry>,
+    /// Author name for comments and tracked changes.
+    pub author: String,
+    /// Format painter: copied formatting waiting to be applied (and whether it stays on).
+    pub painter: Option<(CharProps, wordforge_doc::props::ParaProps, bool)>,
+    /// Last message for the status bar / agents.
+    pub status: String,
+    history: Vec<Undo>,
+    redo: Vec<Undo>,
+    /// Typing is coalesced into one undo step until something else happens.
+    typing_open: bool,
+    /// The next mutating command joins the previous undo step (later frames of a drag).
+    join_next: bool,
+    rev: u64,
+    cache: LayoutCache,
+    layout: Option<(u64, f32, ViewMode, Arc<DocLayout>, bool)>,
+    /// Picture edits: edited media key → original media key (Reset Picture).
+    pub originals: std::collections::HashMap<String, String>,
+    /// Last mutating command (Repeat).
+    pub last_command: Option<(String, Value)>,
+    /// Macro being recorded: (name, steps).
+    pub recording: Option<(String, Vec<(String, Value)>)>,
+    pub macros: std::collections::BTreeMap<String, Vec<(String, Value)>>,
+    pub autocorrect_on: bool,
+    pub autocorrect_user: Vec<(String, String)>,
+    /// Saved versions: (label, date, document).
+    pub versions: Vec<(String, String, Document)>,
+    /// Quick Parts / AutoText entries.
+    pub building_blocks: std::collections::BTreeMap<String, Fragment>,
+    pub autosave: bool,
+    /// Citation style: APA, MLA, Chicago, IEEE.
+    pub bib_style: String,
+    /// Mail merge data source and preview.
+    pub merge: crate::cmd::mailings::MergeState,
+    /// Requests from commands to the UI (open a dialog, scroll…), drained by the front end.
+    pub ui_requests: Vec<Value>,
+}
+
+/// Maximum undo depth.
+const MAX_UNDO: usize = 500;
+
+impl Session {
+    pub fn new(doc: Document) -> Self {
+        let start = doc.start_of(StoryRef::Body);
+        Session {
+            doc,
+            sel: Selection::caret(start),
+            view: ViewState::default(),
+            pending: None,
+            path: None,
+            dirty: false,
+            clipboard: None,
+            clipboard_text: String::new(),
+            find: FindState::default(),
+            goal_x: None,
+            page_hint: 0,
+            registry: Arc::new(crate::cmd::registry()),
+            author: "WordForge User".into(),
+            painter: None,
+            status: String::new(),
+            history: Vec::new(),
+            redo: Vec::new(),
+            typing_open: false,
+            join_next: false,
+            rev: 1,
+            cache: LayoutCache::new(),
+            layout: None,
+            originals: Default::default(),
+            last_command: None,
+            recording: None,
+            macros: Default::default(),
+            autocorrect_on: true,
+            autocorrect_user: Vec::new(),
+            versions: Vec::new(),
+            building_blocks: Default::default(),
+            autosave: true,
+            bib_style: "APA".into(),
+            merge: Default::default(),
+            ui_requests: Vec::new(),
+        }
+    }
+
+    /// Document revision (bumped by every change).
+    pub fn rev(&self) -> u64 {
+        self.rev
+    }
+    pub fn touch(&mut self) {
+        self.rev = self.rev.wrapping_add(1);
+        self.dirty = true;
+    }
+
+    /// The current layout (recomputed when the document or view changed).
+    pub fn layout(&mut self) -> Arc<DocLayout> {
+        let ww = self.view.web_width;
+        if let Some((r, w, m, l, pf)) = &self.layout
+            && *r == self.rev
+            && (*w == ww || self.view.mode == ViewMode::Print)
+            && *m == self.view.mode
+            && *pf == self.view.proofing
+        {
+            return l.clone();
+        }
+        let opts = LayoutOptions { view: self.view.mode, web_width: ww, show_hidden: self.view.marks, proofing: self.view.proofing };
+        let l = Arc::new(wordforge_layout::layout(&self.doc, &mut self.cache, &opts));
+        self.layout = Some((self.rev, ww, self.view.mode, l.clone(), self.view.proofing));
+        l
+    }
+    /// A layout for output (PDF, images, print): no proofing marks, print view.
+    pub fn export_layout(&self) -> Arc<DocLayout> {
+        let opts = LayoutOptions { view: ViewMode::Print, web_width: 0.0, show_hidden: false, proofing: false };
+        Arc::new(wordforge_layout::layout(&self.doc, &mut LayoutCache::new(), &opts))
+    }
+
+    /// Invalidate the cached layout (fonts changed etc.).
+    pub fn relayout(&mut self) {
+        self.layout = None;
+        self.cache.clear();
+    }
+
+    /// Snapshot for undo before a change.
+    pub fn checkpoint(&mut self, label: &str) {
+        if label == "Typing" && self.typing_open {
+            return;
+        }
+        self.typing_open = label == "Typing";
+        self.history.push(Undo { label: label.to_string(), doc: self.doc.clone(), sel: self.sel.clone() });
+        if self.history.len() > MAX_UNDO {
+            self.history.remove(0);
+        }
+        self.redo.clear();
+    }
+    /// Make the next mutating command part of the previous undo step instead of a new one, so a
+    /// drag that runs a command every frame is a single Undo. Call it on every frame of the drag
+    /// except the first; it is consumed by the next `run`.
+    pub fn join_next_undo(&mut self) {
+        self.join_next = true;
+    }
+    /// Close an open typing group (caret moved, other command).
+    pub fn close_typing(&mut self) {
+        self.typing_open = false;
+    }
+    pub fn can_undo(&self) -> bool {
+        !self.history.is_empty()
+    }
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
+    pub fn undo_label(&self) -> Option<&str> {
+        self.history.last().map(|u| u.label.as_str())
+    }
+    pub fn redo_label(&self) -> Option<&str> {
+        self.redo.last().map(|u| u.label.as_str())
+    }
+    pub fn undo_labels(&self) -> Vec<String> {
+        self.history.iter().rev().map(|u| u.label.clone()).collect()
+    }
+    pub fn undo(&mut self) -> bool {
+        self.typing_open = false;
+        let Some(u) = self.history.pop() else { return false };
+        let cur = Undo { label: u.label.clone(), doc: std::mem::replace(&mut self.doc, u.doc), sel: std::mem::replace(&mut self.sel, u.sel) };
+        self.redo.push(cur);
+        self.touch();
+        true
+    }
+    pub fn redo(&mut self) -> bool {
+        self.typing_open = false;
+        let Some(u) = self.redo.pop() else { return false };
+        let cur = Undo { label: u.label.clone(), doc: std::mem::replace(&mut self.doc, u.doc), sel: std::mem::replace(&mut self.sel, u.sel) };
+        self.history.push(cur);
+        self.touch();
+        true
+    }
+    /// Drop history (after open / new).
+    pub fn reset_history(&mut self) {
+        self.history.clear();
+        self.redo.clear();
+        self.typing_open = false;
+    }
+
+    /// Replace the document (open/new).
+    pub fn set_document(&mut self, doc: Document) {
+        self.doc = doc;
+        self.doc.ensure_nonempty();
+        self.sel = Selection::caret(self.doc.start_of(StoryRef::Body));
+        self.pending = None;
+        self.reset_history();
+        self.touch();
+        self.dirty = false;
+        self.relayout();
+    }
+
+    /// Make the selection valid for the current document.
+    pub fn clamp_selection(&mut self) {
+        self.sel.anchor = self.doc.clamp(&self.sel.anchor);
+        self.sel.focus = self.doc.clamp(&self.sel.focus);
+    }
+
+    /// Run a command by id with JSON params (the single entry point for the UI, CLI, MCP and
+    /// control channel). Mutating commands are undoable; a failed command leaves the document as
+    /// it was; a panic inside a command becomes an error.
+    pub fn run(&mut self, id: &str, params: &Value) -> Result<Value, CmdError> {
+        let join = std::mem::take(&mut self.join_next);
+        let reg = self.registry.clone();
+        let Some(spec) = reg.get(id) else { return Err(CmdError::Unknown(id.to_string())) };
+        if let Some(why) = (spec.enabled)(self) {
+            return Err(CmdError::Disabled(format!("{id}: {why}")));
+        }
+        // Restrict Editing.
+        if spec.mutates
+            && let Some(mode) = self.doc.settings.protection.clone()
+        {
+            let allowed = id.starts_with("review.restrict") || id.starts_with("file.") || id == "edit.undo" || id == "edit.redo";
+            let comment_ok = id.starts_with("review.") && (id.contains("Comment") || id == "review.reply");
+            match mode.as_str() {
+                "readOnly" | "forms" if !allowed => return Err(CmdError::Disabled(format!("{id}: the document is protected (read only)"))),
+                "comments" if !allowed && !comment_ok => return Err(CmdError::Disabled(format!("{id}: only comments are allowed in this document"))),
+                "trackedChanges" => self.doc.settings.track_changes = true,
+                _ => {}
+            }
+        }
+        // Macro recording and Repeat.
+        let record = !matches!(id, "tools.recordMacro" | "tools.macros" | "edit.undo" | "edit.redo" | "edit.repeat")
+            && (spec.mutates || id.starts_with("caret.") || id.starts_with("select."));
+        if record && let Some((_, steps)) = self.recording.as_mut() {
+            steps.push((id.to_string(), params.clone()));
+        }
+        if spec.mutates && !matches!(id, "edit.undo" | "edit.redo" | "edit.repeat") {
+            self.last_command = Some((id.to_string(), params.clone()));
+        }
+        let before_doc = if spec.mutates { Some((self.doc.clone(), self.sel.clone(), self.history.len(), self.typing_open)) } else { None };
+        if spec.mutates && spec.id != "text.insert" {
+            self.typing_open = false;
+        }
+        if spec.mutates {
+            let label = if spec.id == "text.insert" { "Typing" } else { spec.label };
+            if !join || self.history.is_empty() {
+                self.checkpoint(label);
+            }
+        } else if !spec.id.starts_with("caret.") && !spec.id.starts_with("view.") {
+            // Non-mutating commands other than caret movement keep the typing group.
+        } else if spec.id.starts_with("caret.") {
+            self.typing_open = false;
+        }
+        let run = spec.run;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(self, params)));
+        let result = match result {
+            Ok(r) => r,
+            Err(p) => {
+                let msg = p.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| p.downcast_ref::<String>().cloned()).unwrap_or_default();
+                Err(CmdError::Failed(format!("{id} panicked: {msg}")))
+            }
+        };
+        match &result {
+            Ok(_) => {
+                if spec.mutates {
+                    self.touch();
+                    self.doc.ensure_nonempty();
+                }
+                self.clamp_selection();
+            }
+            Err(e) => {
+                if let Some((d, s, h, t)) = before_doc {
+                    self.doc = d;
+                    self.sel = s;
+                    self.history.truncate(h);
+                    self.typing_open = t;
+                }
+                self.status = e.to_string();
+            }
+        }
+        result
+    }
+
+    /// The paragraph path the caret is in.
+    pub fn caret_path(&self) -> &Path {
+        &self.sel.focus.path
+    }
+    pub fn story(&self) -> StoryRef {
+        self.sel.focus.story
+    }
+
+    /// Formatting typing would use at the caret.
+    pub fn typing_props(&self) -> CharProps {
+        if let Some(p) = &self.pending {
+            return p.clone();
+        }
+        let f = &self.sel.focus;
+        self.doc.para_at(f).map(|p| p.props_at(f.off).clone()).unwrap_or_default()
+    }
+
+    /// Selected plain text.
+    pub fn selected_text(&self) -> String {
+        let (a, b) = self.sel.ordered();
+        self.doc.copy_range(&a, &b).plain_text()
+    }
+}

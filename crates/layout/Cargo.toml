@@ -1,0 +1,20 @@
+[package]
+name = "wordforge-layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge layout: shaping, line breaking, tabs, lists, tables, pagination, headers/footers, hit testing"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-geom = { workspace = true }
+wordforge-doc = { workspace = true }
+wordforge-fonts = { workspace = true }
+wordforge-proof = { workspace = true }
+unicode-linebreak = { workspace = true }
+unicode-segmentation = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }

@@ -1,0 +1,500 @@
+//! WordForge rasteriser: draws a page's display list with vello_cpu.
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use vello_cpu::kurbo::{self, Affine, BezPath, Shape};
+use vello_cpu::peniko;
+use vello_cpu::{Pixmap, RenderContext, Resources};
+use wordforge_doc::Document;
+use wordforge_doc::para::ShapeKind;
+use wordforge_doc::props::Rgb;
+use wordforge_fonts::FontDb;
+use wordforge_layout::Page;
+use wordforge_layout::display::{DisplayOptions, Draw, Stroke, page_display};
+
+/// Worker threads for rasterising (0 on the web, where there are no threads).
+pub fn default_threads() -> u16 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        0
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::thread::available_parallelism().map(|n| (n.get().saturating_sub(1)).clamp(1, 8) as u16).unwrap_or(2)
+    }
+}
+
+/// Largest raster side vello_cpu handles comfortably.
+pub const MAX_SIDE: u32 = 16_000;
+
+/// A rendered image (premultiplied RGBA8, row-major).
+#[derive(Clone, Default)]
+pub struct Rendered {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+impl Rendered {
+    pub fn to_straight(&self) -> Vec<u8> {
+        let mut out = self.pixels.clone();
+        for px in out.as_chunks_mut::<4>().0 {
+            let a = px[3] as u32;
+            if a != 0 && a != 255 {
+                for c in px.iter_mut().take(3) {
+                    *c = ((*c as u32 * 255 + a / 2) / a).min(255) as u8;
+                }
+            }
+        }
+        out
+    }
+    /// PNG bytes (empty on failure, logged).
+    pub fn to_png(&self) -> Vec<u8> {
+        let mut px = self.to_straight();
+        px.resize(self.width as usize * self.height as usize * 4, 0);
+        let Some(img) = image::RgbaImage::from_raw(self.width, self.height, px) else {
+            log::error!("PNG encode: bad size {}×{}", self.width, self.height);
+            return Vec::new();
+        };
+        let mut buf = Vec::new();
+        if let Err(e) = img.write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png) {
+            log::error!("PNG encode: {e}");
+            return Vec::new();
+        }
+        buf
+    }
+    pub fn to_jpeg(&self, quality: u8) -> Vec<u8> {
+        let rgba = self.to_straight();
+        let rgb: Vec<u8> = rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|p| {
+                let a = p[3] as u32;
+                let mix = |c: u8| ((c as u32 * a + 255 * (255 - a)) / 255) as u8;
+                [mix(p[0]), mix(p[1]), mix(p[2])]
+            })
+            .collect();
+        let mut buf = Vec::new();
+        let enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, quality.clamp(1, 100));
+        let _ = image::ImageEncoder::write_image(enc, &rgb, self.width, self.height, image::ExtendedColorType::Rgb8);
+        buf
+    }
+    /// Straight RGBA at (x, y) (transparent outside).
+    pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
+        if x >= self.width || y >= self.height {
+            return [0; 4];
+        }
+        let i = ((y as usize * self.width as usize) + x as usize) * 4;
+        let Some(p) = self.pixels.get(i..i + 4) else { return [0; 4] };
+        let a = p[3] as u32;
+        if a == 0 {
+            return [0; 4];
+        }
+        let un = |c: u8| ((c as u32 * 255 + a / 2) / a).min(255) as u8;
+        [un(p[0]), un(p[1]), un(p[2]), p[3]]
+    }
+}
+
+fn color(c: Rgb, alpha: f32) -> peniko::Color {
+    peniko::Color::from_rgba8(c.0, c.1, c.2, (alpha.clamp(0.0, 1.0) * 255.0) as u8)
+}
+
+/// Decoded images by media key (and content pointer), shared across renders.
+fn image_cache() -> &'static Mutex<HashMap<(String, usize), Option<Arc<Pixmap>>>> {
+    static C: std::sync::OnceLock<Mutex<HashMap<(String, usize), Option<Arc<Pixmap>>>>> = std::sync::OnceLock::new();
+    C.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Decode an encoded image to a premultiplied pixmap.
+pub fn decode_pixmap(bytes: &[u8]) -> Option<Pixmap> {
+    let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+    let (w, h) = img.dimensions();
+    if w == 0 || h == 0 || w > u16::MAX as u32 || h > u16::MAX as u32 {
+        return None;
+    }
+    let data: Vec<vello_cpu::color::PremulRgba8> = img
+        .pixels()
+        .map(|p| {
+            let a = p[3] as u16;
+            let m = |c: u8| ((c as u16 * a + 127) / 255) as u8;
+            vello_cpu::color::PremulRgba8 { r: m(p[0]), g: m(p[1]), b: m(p[2]), a: p[3] }
+        })
+        .collect();
+    Some(Pixmap::from_parts(data, w as u16, h as u16))
+}
+
+/// Pixel size of an encoded image.
+pub fn image_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().ok()?.into_dimensions().ok()
+}
+
+fn pixmap_for(doc: &Document, key: &str) -> Option<Arc<Pixmap>> {
+    let bytes = doc.media.get(key)?;
+    let ck = (key.to_string(), Arc::as_ptr(bytes) as usize);
+    if let Some(v) = image_cache().lock().unwrap_or_else(|e| e.into_inner()).get(&ck) {
+        return v.clone();
+    }
+    let pm = decode_pixmap(bytes).map(Arc::new);
+    let mut c = image_cache().lock().unwrap_or_else(|e| e.into_inner());
+    if c.len() > 256 {
+        c.clear();
+    }
+    c.insert(ck, pm.clone());
+    pm
+}
+
+/// Options for a page raster.
+#[derive(Clone, Debug)]
+pub struct RenderOptions {
+    pub display: DisplayOptions,
+    /// Paper colour (page colour from Design › Page Color, else white).
+    pub paper: Rgb,
+    /// Colour for formatting marks.
+    pub mark_color: Rgb,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        RenderOptions { display: DisplayOptions::default(), paper: Rgb::WHITE, mark_color: Rgb(0x2B, 0x57, 0x9A) }
+    }
+}
+
+/// Render a whole page at `scale` pixels per point.
+pub fn render_page(doc: &Document, page: &Page, scale: f32, opts: &RenderOptions) -> Rendered {
+    let scale = if scale.is_finite() && scale > 0.0 { scale } else { 1.0 };
+    let w = ((page.w * scale).ceil() as u32).clamp(1, MAX_SIDE);
+    let h = ((page.h.min(1e6) * scale).ceil() as u32).clamp(1, MAX_SIDE);
+    render_region(doc, page, w, h, Affine::scale(scale as f64), opts)
+}
+
+/// Render a page into a `w`×`h` raster with `view` (page points → pixels).
+pub fn render_region(doc: &Document, page: &Page, w: u32, h: u32, view: Affine, opts: &RenderOptions) -> Rendered {
+    let (w16, h16) = (w.clamp(1, MAX_SIDE) as u16, h.clamp(1, MAX_SIDE) as u16);
+    let mut ctx = RenderContext::new_with(w16, h16, vello_cpu::RenderSettings { num_threads: default_threads(), ..Default::default() });
+    ctx.set_transform(Affine::IDENTITY);
+    ctx.set_paint(color(doc.settings.page_color.unwrap_or(opts.paper), 1.0));
+    ctx.fill_rect(&kurbo::Rect::new(0.0, 0.0, w16 as f64, h16 as f64));
+    let items = page_display(doc, page, &opts.display);
+    let visible = view.inverse().transform_rect_bbox(kurbo::Rect::new(0.0, 0.0, w16 as f64, h16 as f64)).inflate(40.0, 40.0);
+    if let Some(wm) = &doc.settings.watermark {
+        draw_watermark(&mut ctx, view, page, wm);
+    }
+    for it in &items {
+        draw(&mut ctx, doc, it, view, &visible, opts);
+    }
+    ctx.flush();
+    let mut pixels = vec![0u8; w16 as usize * h16 as usize * 4];
+    let mut res = Resources::new();
+    if let Some(pm) = vello_cpu::PixmapMut::new(w16, h16, &mut pixels) {
+        ctx.render(pm, &mut res);
+    }
+    Rendered { width: w16 as u32, height: h16 as u32, pixels }
+}
+
+fn draw_watermark(ctx: &mut RenderContext, view: Affine, page: &Page, wm: &wordforge_doc::Watermark) {
+    let r = wordforge_fonts::word::resolve(&wm.font, false, false);
+    let face = r.face;
+    let glyphs = wordforge_fonts::shape(&face, &wm.text, &[], |c| c);
+    let upem = face.upem.max(1.0);
+    let raw_w: f64 = glyphs.iter().map(|g| g.x_advance as f64).sum::<f64>() / upem;
+    if raw_w <= 0.0 {
+        return;
+    }
+    let diag = if wm.diagonal { ((page.w as f64).powi(2) + (page.h.min(2000.0) as f64).powi(2)).sqrt() } else { page.w as f64 };
+    let size = (diag * 0.5 / raw_w).min(200.0);
+    let k = size / upem;
+    let angle = if wm.diagonal { -((page.h.min(2000.0) as f64) / page.w.max(1.0) as f64).atan() } else { 0.0 };
+    let base = Affine::translate((page.w as f64 / 2.0, page.h.min(2000.0) as f64 / 2.0))
+        * Affine::rotate(angle)
+        * Affine::translate((-raw_w * size / 2.0, size * 0.35));
+    ctx.set_paint(color(wm.color, if wm.semitransparent { 0.35 } else { 0.8 }));
+    let db = FontDb::global();
+    let mut x = 0.0;
+    for g in &glyphs {
+        let o = db.outline(&face, g.gid);
+        ctx.set_transform(view * base * Affine::translate((x, 0.0)) * Affine::scale(k));
+        ctx.fill_path(&o);
+        x += g.x_advance as f64 * k;
+    }
+}
+
+fn draw(ctx: &mut RenderContext, doc: &Document, it: &Draw, view: Affine, visible: &kurbo::Rect, opts: &RenderOptions) {
+    match it {
+        Draw::Fill { rect, color: c, alpha } => {
+            let r = kurbo::Rect::new(rect.x as f64, rect.y as f64, rect.right() as f64, rect.bottom() as f64);
+            if !r.overlaps(*visible) {
+                return;
+            }
+            ctx.set_transform(view);
+            ctx.set_paint(color(*c, *alpha));
+            ctx.fill_rect(&r);
+        }
+        Draw::Line { x0, y0, x1, y1, width, color: c, stroke, alpha } => {
+            ctx.set_transform(view);
+            ctx.set_paint(color(*c, *alpha));
+            let w = *width as f64;
+            let mut st = kurbo::Stroke::new(w);
+            match stroke {
+                Stroke::Dotted => st = st.with_dashes(0.0, [w, w * 2.0]),
+                Stroke::Dashed => st = st.with_dashes(0.0, [w * 4.0, w * 2.0]),
+                _ => {}
+            }
+            let line = |ctx: &mut RenderContext, dy: f64| {
+                let mut p = BezPath::new();
+                p.move_to((*x0 as f64, *y0 as f64 + dy));
+                p.line_to((*x1 as f64, *y1 as f64 + dy));
+                ctx.stroke_path(&p);
+            };
+            if *stroke == Stroke::Wave {
+                let mut p = BezPath::new();
+                let (a, b) = ((*x0).min(*x1) as f64, (*x0).max(*x1) as f64);
+                let y = *y0 as f64;
+                let amp = (w * 1.2).max(0.8);
+                let step = amp * 2.0;
+                p.move_to((a, y));
+                let mut x = a;
+                let mut up = true;
+                while x < b && x - a < 20_000.0 {
+                    let nx = (x + step).min(b);
+                    p.quad_to(((x + nx) / 2.0, if up { y - amp } else { y + amp }), (nx, y));
+                    x = nx;
+                    up = !up;
+                }
+                ctx.set_stroke(kurbo::Stroke::new(w * 0.8));
+                ctx.stroke_path(&p);
+                return;
+            }
+            if *stroke == Stroke::Double {
+                ctx.set_stroke(kurbo::Stroke::new(w * 0.6));
+                line(ctx, -w * 0.9);
+                line(ctx, w * 0.9);
+                return;
+            }
+            ctx.set_stroke(st);
+            line(ctx, 0.0);
+        }
+        Draw::Glyphs { face, size, glyphs, color: c, alpha, synth_bold, synth_italic, .. } => {
+            let db = FontDb::global();
+            let k = *size as f64 / face.upem.max(1.0);
+            ctx.set_paint(color(*c, *alpha));
+            let skew = if *synth_italic { Affine::new([1.0, 0.0, -0.21, 1.0, 0.0, 0.0]) } else { Affine::IDENTITY };
+            if *synth_bold {
+                ctx.set_stroke(kurbo::Stroke::new(face.upem * 0.03));
+            }
+            for (gid, x, y) in glyphs {
+                let (gx, gy) = (*x as f64, *y as f64);
+                if gx < visible.x0 - 100.0 || gx > visible.x1 || gy < visible.y0 || gy > visible.y1 + 200.0 {
+                    continue;
+                }
+                let o = db.outline(face, *gid);
+                if o.elements().is_empty() {
+                    continue;
+                }
+                ctx.set_transform(view * Affine::translate((gx, gy)) * skew * Affine::scale(k));
+                ctx.fill_path(&o);
+                if *synth_bold {
+                    ctx.stroke_path(&o);
+                }
+            }
+        }
+        Draw::Mark { x, baseline, size, ch } => {
+            let face = wordforge_fonts::word::resolve("Source Sans 3", false, false).face;
+            let gid = face.glyph_for(*ch);
+            let face = if gid == 0 {
+                match FontDb::global().fallback_for(*ch, face.id()) {
+                    Some(f) => wordforge_fonts::FaceRef::of(&f),
+                    None => return,
+                }
+            } else {
+                face
+            };
+            let gid = face.glyph_for(*ch);
+            let o = FontDb::global().outline(&face, gid);
+            let k = *size as f64 / face.upem.max(1.0);
+            ctx.set_paint(color(opts.mark_color, 0.9));
+            ctx.set_transform(view * Affine::translate((*x as f64, *baseline as f64)) * Affine::scale(k));
+            ctx.fill_path(&o);
+        }
+        Draw::Image { rect, media, crop, alpha } => {
+            let r = kurbo::Rect::new(rect.x as f64, rect.y as f64, rect.right() as f64, rect.bottom() as f64);
+            if !r.overlaps(*visible) {
+                return;
+            }
+            let Some(pm) = pixmap_for(doc, media) else {
+                ctx.set_transform(view);
+                ctx.set_paint(color(Rgb(0xD0, 0xD0, 0xD0), 1.0));
+                ctx.fill_rect(&r);
+                return;
+            };
+            let (pw, ph) = (pm.width().max(1) as f64, pm.height().max(1) as f64);
+            let [cl, ct, cr, cb] = crop.map(|v| if v.is_finite() { v.clamp(0.0, 0.95) as f64 } else { 0.0 });
+            let vis_w = (1.0 - cl - cr).max(0.05);
+            let vis_h = (1.0 - ct - cb).max(0.05);
+            let sx = r.width() / (pw * vis_w);
+            let sy = r.height() / (ph * vis_h);
+            ctx.set_transform(view);
+            // vello_cpu panics on image paints with sampler alpha != 1, so fade through a layer.
+            let alpha = if alpha.is_finite() { alpha.clamp(0.0, 1.0) } else { 1.0 };
+            let faded = alpha < 1.0;
+            if faded {
+                ctx.push_opacity_layer(alpha);
+            }
+            ctx.set_paint(vello_cpu::Image {
+                image: vello_cpu::ImageSource::Pixmap(pm),
+                sampler: peniko::ImageSampler::default().with_quality(peniko::ImageQuality::Medium),
+            });
+            ctx.set_paint_transform(Affine::translate((r.x0 - cl * pw * sx, r.y0 - ct * ph * sy)) * Affine::scale_non_uniform(sx, sy));
+            ctx.fill_rect(&r);
+            ctx.reset_paint_transform();
+            if faded {
+                ctx.pop_layer();
+            }
+        }
+        Draw::Shape { rect, kind, fill, stroke, stroke_width } => {
+            let r = kurbo::Rect::new(rect.x as f64, rect.y as f64, rect.right() as f64, rect.bottom() as f64);
+            let path = shape_path(*kind, r);
+            ctx.set_transform(view);
+            if let Some(f) = fill {
+                ctx.set_paint(color(*f, 1.0));
+                ctx.fill_path(&path);
+            }
+            if let Some(s) = stroke {
+                ctx.set_paint(color(*s, 1.0));
+                ctx.set_stroke(kurbo::Stroke::new(stroke_width.max(0.25) as f64));
+                ctx.stroke_path(&path);
+            }
+        }
+    }
+}
+
+/// Outline of a basic shape in a rectangle.
+pub fn shape_path(kind: ShapeKind, r: kurbo::Rect) -> BezPath {
+    let (cx, cy) = (r.center().x, r.center().y);
+    let poly = |pts: &[(f64, f64)]| {
+        let mut p = BezPath::new();
+        for (i, (x, y)) in pts.iter().enumerate() {
+            if i == 0 {
+                p.move_to((*x, *y));
+            } else {
+                p.line_to((*x, *y));
+            }
+        }
+        p.close_path();
+        p
+    };
+    match kind {
+        ShapeKind::Rectangle | ShapeKind::TextBox => r.to_path(0.1),
+        ShapeKind::RoundedRectangle => kurbo::RoundedRect::from_rect(r, r.width().min(r.height()) * 0.16).to_path(0.1),
+        ShapeKind::Ellipse => kurbo::Ellipse::from_rect(r).to_path(0.1),
+        ShapeKind::Triangle => poly(&[(cx, r.y0), (r.x1, r.y1), (r.x0, r.y1)]),
+        ShapeKind::Diamond => poly(&[(cx, r.y0), (r.x1, cy), (cx, r.y1), (r.x0, cy)]),
+        ShapeKind::Line => {
+            let mut p = BezPath::new();
+            p.move_to((r.x0, r.y1));
+            p.line_to((r.x1, r.y0));
+            p
+        }
+        ShapeKind::Arrow => {
+            let h = r.height();
+            poly(&[
+                (r.x0, cy - h * 0.2),
+                (r.x1 - h * 0.5, cy - h * 0.2),
+                (r.x1 - h * 0.5, r.y0),
+                (r.x1, cy),
+                (r.x1 - h * 0.5, r.y1),
+                (r.x1 - h * 0.5, cy + h * 0.2),
+                (r.x0, cy + h * 0.2),
+            ])
+        }
+        ShapeKind::Star => {
+            let mut pts = Vec::new();
+            for i in 0..10 {
+                let a = std::f64::consts::PI * (i as f64) / 5.0 - std::f64::consts::FRAC_PI_2;
+                let rad = if i % 2 == 0 { 1.0 } else { 0.4 };
+                pts.push((cx + a.cos() * r.width() / 2.0 * rad, cy + a.sin() * r.height() / 2.0 * rad));
+            }
+            poly(&pts)
+        }
+        ShapeKind::Heart => {
+            let (w, h) = (r.width(), r.height());
+            let mut p = BezPath::new();
+            p.move_to((cx, r.y0 + h * 0.3));
+            p.curve_to((cx, r.y0), (r.x0, r.y0), (r.x0, r.y0 + h * 0.3));
+            p.curve_to((r.x0, r.y0 + h * 0.6), (cx - w * 0.1, r.y0 + h * 0.75), (cx, r.y1));
+            p.curve_to((cx + w * 0.1, r.y0 + h * 0.75), (r.x1, r.y0 + h * 0.6), (r.x1, r.y0 + h * 0.3));
+            p.curve_to((r.x1, r.y0), (cx, r.y0), (cx, r.y0 + h * 0.3));
+            p.close_path();
+            p
+        }
+    }
+}
+
+/// Render the page area (`x`, `y`, `w`×`h` points) at `scale` px/pt — for previews and thumbnails.
+pub fn render_area(doc: &Document, page: &Page, x: f32, y: f32, w: f32, h: f32, scale: f32, opts: &RenderOptions) -> Rendered {
+    let scale = if scale.is_finite() && scale > 0.0 { scale } else { 1.0 };
+    let pw = ((w * scale).ceil() as u32).clamp(1, MAX_SIDE);
+    let ph = ((h * scale).ceil() as u32).clamp(1, MAX_SIDE);
+    let view = Affine::scale(scale as f64) * Affine::translate((-x as f64, -y as f64));
+    render_region(doc, page, pw, ph, view, opts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wordforge_layout::{LayoutCache, LayoutOptions, layout};
+
+    #[test]
+    fn renders_text_dark_pixels() {
+        let d = Document::from_text("Hello WordForge");
+        let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions::default());
+        let img = render_page(&d, &l.pages[0], 1.0, &RenderOptions::default());
+        assert_eq!((img.width, img.height), (612, 792));
+        // Somewhere in the first text line there are dark pixels; the margins are white.
+        let dark = (72..300).flat_map(|x| (72..100).map(move |y| (x, y))).filter(|(x, y)| img.pixel(*x, *y)[0] < 128).count();
+        assert!(dark > 30, "dark {dark}");
+        assert_eq!(img.pixel(5, 5), [255, 255, 255, 255]);
+        assert!(!img.to_png().is_empty());
+    }
+
+    #[test]
+    fn hostile_scale_is_clamped() {
+        let d = Document::new();
+        let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions::default());
+        let img = render_page(&d, &l.pages[0], f32::NAN, &RenderOptions::default());
+        assert_eq!(img.width, 612);
+        let big = render_page(&d, &l.pages[0], 1e9, &RenderOptions::default());
+        assert!(big.width <= MAX_SIDE);
+        assert!(decode_pixmap(b"not an image").is_none());
+    }
+
+    #[test]
+    fn dimmed_header_image_renders() {
+        let mut d = Document::from_text("body");
+        let mut png = Vec::new();
+        image::RgbaImage::from_pixel(4, 4, image::Rgba([200, 0, 0, 255]))
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let media = d.add_media(png, "png");
+        let mut hp = wordforge_doc::Paragraph::new();
+        let obj = wordforge_doc::para::InlineObject::Image { media, w: 40.0, h: 40.0, alt: String::new(), float: Default::default(), crop: [0.0; 4] };
+        hp.insert_object(0, obj, &Default::default()).unwrap();
+        let id = d.add_part(wordforge_doc::PartKind::Header, vec![wordforge_doc::para_block(hp)]);
+        d.last_section.headers.default = Some(id);
+        let l = layout(&d, &mut LayoutCache::new(), &LayoutOptions::default());
+        let opts = RenderOptions::default();
+        assert!(opts.display.dim_header);
+        let img = render_page(&d, &l.pages[0], 1.0, &opts);
+        assert!(!img.to_png().is_empty());
+    }
+
+    #[test]
+    fn shapes_have_paths() {
+        let r = kurbo::Rect::new(0.0, 0.0, 10.0, 10.0);
+        for k in [ShapeKind::Rectangle, ShapeKind::Ellipse, ShapeKind::Star, ShapeKind::Heart, ShapeKind::Arrow, ShapeKind::Line] {
+            assert!(!shape_path(k, r).elements().is_empty());
+        }
+    }
+}

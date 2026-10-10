@@ -1,0 +1,25 @@
+[package]
+name = "wordforge-pdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WordForge PDF export (krilla): embedded font subsets with selectable text, links, outline, tagging"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-doc = { workspace = true }
+wordforge-geom = { workspace = true }
+wordforge-fonts = { workspace = true }
+wordforge-layout = { workspace = true }
+krilla = { workspace = true }
+image = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+
+[dev-dependencies]
+hayro-syntax = "0.7.2"
+hayro-interpret = { version = "0.7.0", default-features = false, features = ["embed-fonts"] }
+hayro-cmap = "0.1"
+kurbo = { workspace = true }

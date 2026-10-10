@@ -1,0 +1,763 @@
+//! Round-trip tests: build documents programmatically → write → read → compare.
+
+use std::sync::Arc;
+
+use wordforge_doc::numbering::ListKind;
+use wordforge_doc::para::{Anchor, Float, NoteKind, ShapeKind, Wrap};
+use wordforge_doc::props::{
+    Align, Border, BorderStyle, Borders, CharProps, HeightRule, Highlight, LineSpacing, NumRef, ParaProps, Rgb, RowProps, TabAlign, TabLeader,
+    TabStop, TableLook, TextColor, Underline, VAlign, VMerge, VertAlign,
+};
+use wordforge_doc::section::{Columns, LineNumberRestart, LineNumbering, NumFormat, SectionProps, SectionStart};
+use wordforge_doc::styles::{Style, StyleKind};
+use wordforge_doc::table::{Cell, Table};
+use wordforge_doc::{Block, Blocks, Comment, Document, InlineObject, Paragraph, PartKind, Revision, RevisionKind, Watermark, para_block};
+
+fn rt(doc: &Document) -> Document {
+    let bytes = wordforge_docx::write(doc).expect("write");
+    wordforge_docx::read(&bytes).expect("read")
+}
+
+fn paras(doc: &Document) -> Vec<&Paragraph> {
+    doc.body.iter().filter_map(|b| b.as_para()).collect()
+}
+
+fn part_text(doc: &Document, id: Option<u32>) -> String {
+    id.and_then(|i| doc.parts.get(&i))
+        .map(|p| p.blocks.iter().filter_map(|b| b.as_para()).map(|p| p.plain_text()).collect::<Vec<_>>().join("\n"))
+        .unwrap_or_default()
+}
+
+fn doc_with(blocks: Vec<Paragraph>) -> Document {
+    let mut d = Document::new();
+    d.body = blocks.into_iter().map(para_block).collect();
+    d
+}
+
+/// A paragraph built from (text, props) runs.
+fn para_runs(runs: &[(&str, CharProps)]) -> Paragraph {
+    let mut p = Paragraph::new();
+    for (t, c) in runs {
+        let off = p.len();
+        p.insert_text(off, t, c).unwrap();
+    }
+    p
+}
+
+fn tiny_png() -> Vec<u8> {
+    let img = image::RgbaImage::from_fn(3, 2, |x, y| image::Rgba([x as u8 * 80, y as u8 * 120, 200, 255]));
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
+#[test]
+fn every_char_prop_round_trips() {
+    let all = CharProps {
+        style: Some("Strong".into()),
+        font: Some("Georgia".into()),
+        size: Some(10.5),
+        bold: Some(true),
+        italic: Some(false),
+        underline: Some(Underline::DotDash),
+        underline_color: Some(Rgb(1, 2, 3)),
+        strike: Some(true),
+        double_strike: Some(false),
+        color: Some(TextColor::Rgb(Rgb(0xAA, 0x10, 0x20))),
+        highlight: Some(Highlight::Turquoise),
+        shading: Some(Rgb(0xEE, 0xEE, 0x00)),
+        vert_align: Some(VertAlign::Superscript),
+        caps: Some(true),
+        small_caps: Some(false),
+        hidden: Some(true),
+        spacing: Some(1.5),
+        scale: Some(150.0),
+        position: Some(3.0),
+        kern: Some(8.0),
+        outline: Some(true),
+        shadow: Some(true),
+        emboss: Some(false),
+        engrave: Some(true),
+        lang: Some("fr-FR".into()),
+        no_proof: Some(true),
+        rtl: Some(false),
+        link: None,
+        ins: None,
+        del: None,
+    };
+    let auto =
+        CharProps { color: Some(TextColor::Auto), highlight: Some(Highlight::None), vert_align: Some(VertAlign::Subscript), ..Default::default() };
+    let d = doc_with(vec![para_runs(&[("plain ", CharProps::default()), ("everything", all.clone()), (" auto", auto.clone())])]);
+    let r = rt(&d);
+    let p = paras(&r)[0];
+    assert_eq!(p.text, "plain everything auto");
+    assert_eq!(p.runs.len(), 3);
+    assert_eq!(p.runs[1].props, all);
+    assert_eq!(p.runs[2].props, auto);
+    assert_eq!(p.runs[0].props, CharProps::default());
+}
+
+#[test]
+fn every_para_prop_round_trips() {
+    let b = Border { style: BorderStyle::Double, width: 0.75, color: Some(Rgb(9, 8, 7)), space: 4.0 };
+    let pp = ParaProps {
+        style: Some("Heading1".into()),
+        align: Some(Align::Justify),
+        indent_left: Some(36.0),
+        indent_right: Some(18.0),
+        indent_first: Some(-18.0),
+        space_before: Some(6.0),
+        space_after: Some(12.0),
+        line_spacing: Some(LineSpacing::Multiple(1.5)),
+        contextual_spacing: Some(true),
+        keep_next: Some(true),
+        keep_lines: Some(false),
+        page_break_before: Some(true),
+        widow_control: Some(false),
+        outline_level: Some(2),
+        numbering: Some(NumRef { num: 0, level: 0 }),
+        tabs: Some(vec![
+            TabStop { pos: 72.0, align: TabAlign::Center, leader: TabLeader::Dot },
+            TabStop { pos: 144.0, align: TabAlign::Right, leader: TabLeader::None },
+            TabStop { pos: 200.0, align: TabAlign::Decimal, leader: TabLeader::Underscore },
+            TabStop { pos: 216.0, align: TabAlign::Clear, leader: TabLeader::None },
+            TabStop { pos: 250.0, align: TabAlign::Bar, leader: TabLeader::MiddleDot },
+        ]),
+        shading: Some(Rgb(0xDD, 0xEE, 0xFF)),
+        borders: Some(Borders { top: Some(b), left: Some(Border::single(0.5)), bottom: Some(b), right: None, between: Some(b), inside_v: None }),
+        suppress_hyphens: Some(true),
+        suppress_line_numbers: Some(true),
+        bidi: Some(false),
+        drop_cap: None,
+    };
+    let variants = [
+        ParaProps { line_spacing: Some(LineSpacing::AtLeast(14.0)), indent_first: Some(24.0), align: Some(Align::Center), ..Default::default() },
+        ParaProps { line_spacing: Some(LineSpacing::Exactly(20.0)), align: Some(Align::Right), ..Default::default() },
+        ParaProps { align: Some(Align::Distribute), ..Default::default() },
+        ParaProps::default(),
+    ];
+    let mut ps = vec![Paragraph::with_text("main", CharProps::default())];
+    ps[0].props = pp.clone();
+    ps[0].mark = CharProps { bold: Some(true), size: Some(14.0), ..Default::default() };
+    for v in &variants {
+        let mut p = Paragraph::with_text("v", CharProps::default());
+        p.props = v.clone();
+        ps.push(p);
+    }
+    let r = rt(&doc_with(ps));
+    let got = paras(&r);
+    assert_eq!(got[0].props, pp);
+    assert_eq!(got[0].mark, CharProps { bold: Some(true), size: Some(14.0), ..Default::default() });
+    for (i, v) in variants.iter().enumerate() {
+        assert_eq!(&got[i + 1].props, v, "variant {i}");
+    }
+}
+
+#[test]
+fn styles_and_lists_round_trip() {
+    let mut d = Document::new();
+    d.styles.upsert(Style {
+        id: "MyStyle".into(),
+        name: "My Style".into(),
+        kind: StyleKind::Paragraph,
+        based_on: Some("Normal".into()),
+        next: Some("Normal".into()),
+        linked: Some("MyStyleChar".into()),
+        para: ParaProps { space_after: Some(3.0), align: Some(Align::Center), ..Default::default() },
+        chr: CharProps { italic: Some(true), color: Some(TextColor::Rgb(Rgb(1, 2, 3))), ..Default::default() },
+        priority: Some(5),
+        quick: true,
+        hidden: false,
+        builtin: false,
+        table: None,
+    });
+    d.styles.upsert(Style {
+        id: "MyStyleChar".into(),
+        name: "My Style Char".into(),
+        kind: StyleKind::Character,
+        linked: Some("MyStyle".into()),
+        chr: CharProps { italic: Some(true), ..Default::default() },
+        hidden: true,
+        ..Default::default()
+    });
+    let bullets = d.numbering.add_list(ListKind::Bullet);
+    let nums = d.numbering.add_list(ListKind::Legal);
+    let outline = d.numbering.add_list(ListKind::Outline);
+    if let Some(n) = d.numbering.nums.iter_mut().find(|n| n.id == outline) {
+        n.start_overrides.push((0, 4));
+    }
+    let mut ps = Vec::new();
+    for (i, num) in [bullets, nums, nums, outline].iter().enumerate() {
+        let mut p = Paragraph::with_text(&format!("item {i}"), CharProps::default());
+        p.props.numbering = Some(NumRef { num: *num, level: (i % 2) as u8 });
+        p.props.style = Some("MyStyle".into());
+        ps.push(p);
+    }
+    d.body = ps.into_iter().map(para_block).collect();
+    let r = rt(&d);
+    assert_eq!(r.numbering, d.numbering);
+    assert_eq!(r.styles.default_chr, d.styles.default_chr);
+    assert_eq!(r.styles.default_para, d.styles.default_para);
+    for s in &d.styles.styles {
+        assert_eq!(r.styles.get(&s.id), Some(s), "style {}", s.id);
+    }
+    assert_eq!(r.styles.styles.len(), d.styles.styles.len());
+    assert_eq!(paras(&r)[1].props.numbering, Some(NumRef { num: nums, level: 1 }));
+}
+
+#[test]
+fn tables_with_merges_round_trip() {
+    let mut t = Table::new(3, 3, 468.0);
+    t.props.width = Some(468.0);
+    t.props.align = Some(Align::Center);
+    t.props.indent = Some(5.0);
+    t.props.borders = Some(Borders::all(Border::single(0.5)));
+    t.props.cell_margins = Some([1.0, 5.4, 1.0, 5.4]);
+    t.props.fixed = true;
+    t.props.look = TableLook { header_row: true, total_row: true, banded_rows: false, first_column: false, last_column: true, banded_columns: true };
+    t.props.shading = Some(Rgb(1, 1, 1));
+    t.props.caption = Some("Sales".into());
+    t.rows[0].props = RowProps { height: Some(20.0), height_rule: HeightRule::Exact, header: true, cant_split: true };
+    t.rows[1].props = RowProps { height: Some(15.0), height_rule: HeightRule::AtLeast, ..Default::default() };
+    t.merge(0, 0, 0, 1); // horizontal
+    t.merge(1, 2, 2, 2); // vertical
+    {
+        let c = &mut t.rows[1].cells[0];
+        c.props.shading = Some(Rgb(0xFF, 0, 0));
+        c.props.valign = VAlign::Bottom;
+        c.props.vertical_text = true;
+        c.props.no_wrap = true;
+        c.props.margins = Some([2.0, 3.0, 4.0, 5.0]);
+        c.props.borders = Some(Borders::box_(Border { style: BorderStyle::Dashed, width: 1.0, color: Some(Rgb(0, 0, 255)), space: 0.0 }));
+        c.blocks = vec![para_block(Paragraph::with_text("red", CharProps::default()))];
+    }
+    // Nested table in a cell (followed by the required paragraph).
+    let inner = Table::new(1, 2, 100.0);
+    t.rows[2].cells[0].blocks = vec![Arc::new(Block::Table(inner)), para_block(Paragraph::new())];
+    let mut d = Document::new();
+    d.body = vec![para_block(Paragraph::with_text("before", CharProps::default())), Arc::new(Block::Table(t.clone())), para_block(Paragraph::new())];
+    let r = rt(&d);
+    let got = r.body[1].as_table().expect("table");
+    assert_eq!(got.props, t.props);
+    assert_eq!(got.grid, t.grid);
+    assert_eq!(got.rows.len(), 3);
+    for (gr, er) in got.rows.iter().zip(&t.rows) {
+        assert_eq!(gr.props, er.props);
+        assert_eq!(gr.cells.len(), er.cells.len());
+        for (gc, ec) in gr.cells.iter().zip(&er.cells) {
+            assert_eq!(gc.props, ec.props);
+            assert_eq!(gc.blocks, ec.blocks);
+        }
+    }
+    assert_eq!(got.rows[0].cells[0].span(), 2);
+    assert_eq!(got.rows[2].cells[2].props.vmerge, VMerge::Continue);
+}
+
+#[test]
+fn sections_headers_footers_round_trip() {
+    let mut d = Document::new();
+    let page = |instr: &str| {
+        let mut p = Paragraph::with_text("Page ", CharProps::default());
+        p.insert_object(5, InlineObject::Field { instr: instr.into(), result: "1".into(), locked: false }, &CharProps::default()).unwrap();
+        p
+    };
+    let h1 = d.add_part(PartKind::Header, vec![para_block(Paragraph::with_text("Header one", CharProps::default()))]);
+    let hf = d.add_part(PartKind::Header, vec![para_block(Paragraph::with_text("First page header", CharProps::default()))]);
+    let f1 = d.add_part(PartKind::Footer, vec![para_block(page("PAGE"))]);
+    let f2 = d.add_part(PartKind::Footer, vec![para_block(page("NUMPAGES"))]);
+    let mut s1 = SectionProps {
+        title_page: true,
+        page_num_start: Some(3),
+        page_num_format: NumFormat::UpperRoman,
+        valign: VAlign::Center,
+        page_borders: Some(Borders::box_(Border::single(1.0))),
+        line_numbers: Some(LineNumbering { count_by: 5, start: 1, distance: 18.0, restart: LineNumberRestart::Section }),
+        gutter: 18.0,
+        ..Default::default()
+    };
+    s1.headers.default = Some(h1);
+    s1.headers.first = Some(hf);
+    s1.footers.default = Some(f1);
+    let mut s2 = SectionProps { start: SectionStart::OddPage, rtl: true, ..Default::default() };
+    s2.set_landscape(true);
+    s2.columns = Columns { count: 2, space: 24.0, separator: true, widths: Vec::new() };
+    s2.footers.default = Some(f2);
+    s2.headers.default = Some(h1);
+    let mut p1 = Paragraph::with_text("Section one", CharProps::default());
+    p1.section = Some(Box::new(s1.clone()));
+    let mut s3 = SectionProps { start: SectionStart::Continuous, ..Default::default() };
+    s3.columns = Columns { count: 2, space: 10.0, separator: false, widths: vec![(200.0, 20.0), (248.0, 0.0)] };
+    let mut p2 = Paragraph::with_text("Section two", CharProps::default());
+    p2.section = Some(Box::new(s2.clone()));
+    d.body = vec![para_block(p1), para_block(p2), para_block(Paragraph::with_text("Last", CharProps::default()))];
+    d.last_section = s3.clone();
+    let r = rt(&d);
+    let secs = r.sections();
+    assert_eq!(secs.len(), 3);
+    let strip = |s: &SectionProps| SectionProps { headers: Default::default(), footers: Default::default(), ..s.clone() };
+    assert_eq!(strip(secs[0].1), strip(&s1));
+    assert_eq!(strip(secs[1].1), strip(&s2));
+    assert_eq!(strip(secs[2].1), strip(&s3));
+    assert!(secs[1].1.landscape);
+    assert_eq!(part_text(&r, secs[0].1.headers.default), "Header one");
+    assert_eq!(part_text(&r, secs[0].1.headers.first), "First page header");
+    assert_eq!(secs[0].1.headers.default, secs[1].1.headers.default, "shared header part stays shared");
+    let fp = r.parts.get(&secs[0].1.footers.default.unwrap()).unwrap().blocks[0].as_para().unwrap();
+    assert_eq!(fp.objects, vec![InlineObject::Field { instr: "PAGE".into(), result: "1".into(), locked: false }]);
+    assert_eq!(part_text(&r, secs[1].1.footers.default), "Page 1");
+    assert_eq!(r.parts.get(&secs[0].1.headers.default.unwrap()).unwrap().kind, PartKind::Header);
+}
+
+#[test]
+fn images_round_trip() {
+    let mut d = Document::new();
+    let png = tiny_png();
+    let key = d.add_media(png.clone(), "png");
+    let inline = InlineObject::Image {
+        media: key.clone(),
+        w: 72.0,
+        h: 48.0,
+        alt: "A tiny picture".into(),
+        float: Float::default(),
+        crop: [0.1, 0.0, 0.25, 0.05],
+    };
+    let floating = InlineObject::Image {
+        media: key.clone(),
+        w: 100.0,
+        h: 50.0,
+        alt: String::new(),
+        float: Float { wrap: Wrap::Square, h_rel: Anchor::Page, v_rel: Anchor::Margin, x: 36.0, y: 12.5, dist: 9.0 },
+        crop: [0.0; 4],
+    };
+    let mut floats = vec![floating.clone()];
+    for wrap in [Wrap::Tight, Wrap::Through, Wrap::TopAndBottom, Wrap::BehindText, Wrap::InFrontOfText] {
+        floats.push(InlineObject::Image {
+            media: key.clone(),
+            w: 10.0,
+            h: 10.0,
+            alt: String::new(),
+            float: Float { wrap, h_rel: Anchor::Column, v_rel: Anchor::Paragraph, x: 0.0, y: 0.0, dist: 0.0 },
+            crop: [0.0; 4],
+        });
+    }
+    let mut p = Paragraph::with_text("pic: ", CharProps::default());
+    p.insert_object(5, inline.clone(), &CharProps::default()).unwrap();
+    for f in &floats {
+        let end = p.len();
+        p.insert_object(end, f.clone(), &CharProps::default()).unwrap();
+    }
+    d.body = vec![para_block(p)];
+    let r = rt(&d);
+    let got = paras(&r)[0];
+    let mut expect = vec![inline];
+    expect.extend(floats);
+    assert_eq!(got.objects, expect);
+    assert_eq!(r.media.get(&key).map(|b| b.as_slice()), Some(png.as_slice()));
+    assert_eq!(r.media.len(), 1);
+}
+
+#[test]
+fn hyperlinks_and_bookmarks_round_trip() {
+    let ext = CharProps { link: Some("https://example.com/a?b=1&c=2".into()), underline: Some(Underline::Single), ..Default::default() };
+    let int = CharProps { link: Some("#target".into()), ..Default::default() };
+    let mut p = para_runs(&[("see ", CharProps::default()), ("example", ext.clone()), (" and ", CharProps::default()), ("here", int.clone())]);
+    p.insert_object(0, InlineObject::BookmarkStart { name: "target".into() }, &CharProps::default()).unwrap();
+    let end = p.len();
+    p.insert_object(end, InlineObject::BookmarkEnd { name: "target".into() }, &CharProps::default()).unwrap();
+    let d = doc_with(vec![p.clone()]);
+    let r = rt(&d);
+    let got = paras(&r)[0];
+    assert_eq!(got.text, p.text);
+    assert_eq!(got.objects, p.objects);
+    assert_eq!(got.props_of_char(got.text.find("example").unwrap()), &ext);
+    assert_eq!(got.props_of_char(got.text.find("here").unwrap()), &int);
+    assert_eq!(r.bookmarks().len(), 1);
+}
+
+#[test]
+fn comments_round_trip() {
+    let mut d = Document::new();
+    let c0 = d.add_part(PartKind::Comment, vec![para_block(Paragraph::with_text("Please check this.", CharProps::default()))]);
+    let c1 = d.add_part(PartKind::Comment, vec![para_block(Paragraph::with_text("Done.", CharProps::default()))]);
+    d.comments.insert(
+        0,
+        Comment { author: "Ann".into(), initials: "A".into(), date: "2026-01-02T03:04:05Z".into(), parent: None, resolved: true, part: c0 },
+    );
+    d.comments.insert(
+        1,
+        Comment { author: "Ben".into(), initials: "B".into(), date: "2026-01-03T00:00:00Z".into(), parent: Some(0), resolved: false, part: c1 },
+    );
+    let mut p = Paragraph::with_text("commented text", CharProps::default());
+    p.insert_object(0, InlineObject::CommentStart { id: 0 }, &CharProps::default()).unwrap();
+    let end = p.len();
+    p.insert_object(end, InlineObject::CommentEnd { id: 0 }, &CharProps::default()).unwrap();
+    d.body = vec![para_block(p.clone())];
+    let r = rt(&d);
+    assert_eq!(paras(&r)[0].objects, p.objects);
+    assert_eq!(r.comments.len(), 2);
+    for (id, c) in &d.comments {
+        let g = r.comments.get(id).expect("comment");
+        assert_eq!((&g.author, &g.initials, &g.date, g.parent, g.resolved), (&c.author, &c.initials, &c.date, c.parent, c.resolved));
+        assert_eq!(part_text(&r, Some(g.part)), part_text(&d, Some(c.part)));
+        assert_eq!(r.parts.get(&g.part).unwrap().kind, PartKind::Comment);
+    }
+}
+
+#[test]
+fn notes_round_trip() {
+    let mut d = Document::new();
+    let f = d.add_part(PartKind::Footnote, vec![para_block(Paragraph::with_text("A footnote.", CharProps::default()))]);
+    let f2 = d.add_part(PartKind::Footnote, vec![para_block(Paragraph::with_text("Custom.", CharProps::default()))]);
+    let e = d.add_part(
+        PartKind::Endnote,
+        vec![
+            para_block(Paragraph::with_text("An endnote.", CharProps::default())),
+            para_block(Paragraph::with_text("Second para.", CharProps::default())),
+        ],
+    );
+    let mut p = Paragraph::with_text("Text", CharProps::default());
+    let sup = CharProps { vert_align: Some(VertAlign::Superscript), ..Default::default() };
+    p.insert_object(4, InlineObject::NoteRef { kind: NoteKind::Footnote, id: f, custom: String::new() }, &sup).unwrap();
+    p.insert_object(1, InlineObject::NoteRef { kind: NoteKind::Endnote, id: e, custom: String::new() }, &sup).unwrap();
+    let end = p.len();
+    p.insert_object(end, InlineObject::NoteRef { kind: NoteKind::Footnote, id: f2, custom: "*".into() }, &sup).unwrap();
+    d.settings.footnote_format = NumFormat::LowerLetter;
+    d.settings.endnote_format = NumFormat::UpperRoman;
+    d.body = vec![para_block(p.clone())];
+    let r = rt(&d);
+    let got = paras(&r)[0];
+    assert_eq!(got.text, p.text);
+    assert_eq!(got.runs, p.runs);
+    let notes: Vec<(NoteKind, String, String)> = got
+        .objects
+        .iter()
+        .map(|o| match o {
+            InlineObject::NoteRef { kind, id, custom } => (*kind, part_text(&r, Some(*id)), custom.clone()),
+            o => panic!("unexpected {o:?}"),
+        })
+        .collect();
+    assert_eq!(
+        notes,
+        vec![
+            (NoteKind::Endnote, "An endnote.\nSecond para.".into(), String::new()),
+            (NoteKind::Footnote, "A footnote.".into(), String::new()),
+            (NoteKind::Footnote, "Custom.".into(), "*".into()),
+        ]
+    );
+    assert_eq!(r.settings.footnote_format, NumFormat::LowerLetter);
+    assert_eq!(r.settings.endnote_format, NumFormat::UpperRoman);
+}
+
+/// `references.footnote` starts the note's own text with a reference to the note, so the editor shows
+/// its number. In the file that is the `w:footnoteRef` mark; a `w:footnoteReference` there would make
+/// the note cite itself, which LibreOffice refuses to open.
+#[test]
+fn note_never_references_itself() {
+    let mut d = Document::new();
+    let f = d.add_part(PartKind::Footnote, Vec::new());
+    let mut note = Paragraph::with_text(" The note.", CharProps::default());
+    note.insert_object(0, InlineObject::NoteRef { kind: NoteKind::Footnote, id: f, custom: String::new() }, &CharProps::default()).unwrap();
+    d.parts.get_mut(&f).unwrap().blocks = vec![para_block(note)];
+    let mut p = Paragraph::with_text("Text", CharProps::default());
+    p.insert_object(4, InlineObject::NoteRef { kind: NoteKind::Footnote, id: f, custom: String::new() }, &CharProps::default()).unwrap();
+    d.body = vec![para_block(p)];
+
+    let bytes = wordforge_docx::write(&d).expect("write");
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&bytes)).unwrap();
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut zip.by_name("word/footnotes.xml").unwrap(), &mut xml).unwrap();
+    assert!(!xml.contains("<w:footnoteReference"), "a footnote cites itself: {xml}");
+    assert_eq!(xml.matches("<w:footnoteRef/>").count(), 1, "{xml}");
+
+    let r = wordforge_docx::read(&bytes).expect("read");
+    let got = paras(&r)[0];
+    let Some(InlineObject::NoteRef { id, .. }) = got.objects.first() else { panic!("{:?}", got.objects) };
+    assert_eq!(part_text(&r, Some(*id)).trim(), "The note.");
+}
+
+/// The TOC is a `Contents` paragraph ending in an empty `TOC` field, followed by TOC-styled entries.
+/// In the file the field must contain the entries, inside Word's Table of Contents content control,
+/// or Word shows them as plain text with no Update Table.
+#[test]
+fn toc_field_wraps_its_entries() {
+    let mut head = Paragraph::with_text("Contents", CharProps::default()).styled("TOCHeading");
+    let end = head.len();
+    head.insert_object(
+        end,
+        InlineObject::Field { instr: "TOC \\o \"1-2\" \\h \\z \\u".into(), result: String::new(), locked: false },
+        &CharProps::default(),
+    )
+    .unwrap();
+    let entries = [("Intro\t1", "TOC1"), ("Detail\t2", "TOC2")];
+    let mut blocks = vec![head];
+    blocks.extend(entries.iter().map(|(t, st)| Paragraph::with_text(t, CharProps::default()).styled(st)));
+    blocks.push(Paragraph::with_text("Body", CharProps::default()));
+    let d = doc_with(blocks);
+
+    let bytes = wordforge_docx::write(&d).expect("write");
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&bytes)).unwrap();
+    let mut xml = String::new();
+    std::io::Read::read_to_string(&mut zip.by_name("word/document.xml").unwrap(), &mut xml).unwrap();
+    let sdt = xml.find("<w:sdt>").expect("TOC content control");
+    assert!(xml.contains(r#"<w:docPartGallery w:val="Table of Contents"/>"#), "{xml}");
+    let (begin, fend) = (xml.find(r#"fldCharType="begin""#).unwrap(), xml.find(r#"fldCharType="end""#).unwrap());
+    let last_entry = xml.find("Detail").unwrap();
+    assert!(sdt < xml.find("Contents").unwrap() && xml.find("</w:sdt>").unwrap() < xml.find(">Body<").unwrap(), "{xml}");
+    assert!(begin < xml.find("Intro").unwrap() && fend > last_entry && fend < xml.find("</w:sdt>").unwrap(), "field must span the entries: {xml}");
+
+    // WordForge reads its own TOC back unchanged.
+    let r = wordforge_docx::read(&bytes).expect("read");
+    let ps = paras(&r);
+    assert_eq!(ps.iter().map(|p| p.plain_text()).collect::<Vec<_>>(), ["Contents", "Intro\t1", "Detail\t2", "Body"]);
+    assert!(matches!(ps[0].objects.first(), Some(InlineObject::Field { instr, .. }) if instr.starts_with("TOC")), "{:?}", ps[0].objects);
+    assert_eq!(ps[1].props.style.as_deref(), Some("TOC1"));
+}
+
+#[test]
+fn tracked_changes_round_trip() {
+    let mut d = Document::new();
+    d.revisions.push(Revision { kind: RevisionKind::Insert, author: "Alice".into(), date: "2026-05-01T10:00:00Z".into() });
+    d.revisions.push(Revision { kind: RevisionKind::Delete, author: "Bob".into(), date: "2026-05-02T10:00:00Z".into() });
+    d.settings.track_changes = true;
+    let ins = CharProps { ins: Some(0), ..Default::default() };
+    let del = CharProps { del: Some(1), bold: Some(true), ..Default::default() };
+    let both = CharProps { ins: Some(0), del: Some(1), ..Default::default() };
+    let p = para_runs(&[("kept ", CharProps::default()), ("added\t", ins.clone()), ("removed", del.clone()), ("gone", both.clone())]);
+    let mut p = p;
+    let end = p.len();
+    p.insert_object(end, InlineObject::Field { instr: "DATE".into(), result: "today".into(), locked: false }, &del).unwrap();
+    d.body = vec![para_block(p.clone())];
+    let r = rt(&d);
+    assert_eq!(r.revisions, d.revisions);
+    let got = paras(&r)[0];
+    assert_eq!(got.text, p.text);
+    assert_eq!(got.runs, p.runs);
+    assert_eq!(got.objects, p.objects);
+    assert!(r.settings.track_changes);
+}
+
+#[test]
+fn fields_and_special_chars_round_trip() {
+    let mut p = Paragraph::with_text("a\tb\nc\u{000C}d\u{000E}e\u{2011}f\u{00AD}g  spaced  ", CharProps::default());
+    let fields = [
+        InlineObject::Field { instr: "PAGE".into(), result: "4".into(), locked: false },
+        InlineObject::Field { instr: "DATE \\@ \"M/d/yyyy\"".into(), result: "1/2/2026".into(), locked: true },
+        InlineObject::Field { instr: "NUMPAGES".into(), result: String::new(), locked: false },
+    ];
+    for f in &fields {
+        let end = p.len();
+        p.insert_object(end, f.clone(), &CharProps { bold: Some(true), ..Default::default() }).unwrap();
+    }
+    let r = rt(&doc_with(vec![p.clone()]));
+    let got = paras(&r)[0];
+    assert_eq!(got.text, p.text);
+    assert_eq!(got.objects, p.objects);
+    assert_eq!(got.runs, p.runs);
+}
+
+#[test]
+fn shapes_textboxes_equations_dropcaps_round_trip() {
+    let mut d = Document::new();
+    let story =
+        d.add_part(PartKind::TextBox, vec![para_block(Paragraph::with_text("Inside the box", CharProps { bold: Some(true), ..Default::default() }))]);
+    let tb = InlineObject::Shape {
+        kind: ShapeKind::TextBox,
+        w: 144.0,
+        h: 72.0,
+        fill: Some(Rgb(255, 255, 200)),
+        stroke: Some(Rgb(0, 0, 0)),
+        stroke_width: 1.0,
+        float: Float { wrap: Wrap::Square, h_rel: Anchor::Margin, v_rel: Anchor::Paragraph, x: 10.0, y: 20.0, dist: 0.0 },
+        story: Some(story),
+    };
+    let star = InlineObject::Shape {
+        kind: ShapeKind::Star,
+        w: 20.0,
+        h: 20.0,
+        fill: None,
+        stroke: None,
+        stroke_width: 0.0,
+        float: Float::default(),
+        story: None,
+    };
+    let eq = InlineObject::Equation { linear: "x=(-b±√(b^2-4ac))/2a".into(), display: false };
+    let mut p = Paragraph::with_text("shapes ", CharProps::default());
+    for o in [tb, star.clone(), eq.clone()] {
+        let end = p.len();
+        p.insert_object(end, o, &CharProps::default()).unwrap();
+    }
+    let mut dc = Paragraph::with_text("Once upon a time", CharProps::default());
+    dc.props.drop_cap = Some(3);
+    dc.props.space_after = Some(4.0);
+    d.body = vec![para_block(p.clone()), para_block(dc.clone())];
+    let r = rt(&d);
+    let got = paras(&r);
+    assert_eq!(got[0].objects.len(), 3);
+    match &got[0].objects[0] {
+        InlineObject::Shape { kind, w, h, fill, stroke, stroke_width, float, story } => {
+            assert_eq!(
+                (*kind, *w, *h, *fill, *stroke, *stroke_width),
+                (ShapeKind::TextBox, 144.0, 72.0, Some(Rgb(255, 255, 200)), Some(Rgb(0, 0, 0)), 1.0)
+            );
+            assert_eq!(float.wrap, Wrap::Square);
+            assert_eq!(part_text(&r, *story), "Inside the box");
+        }
+        o => panic!("{o:?}"),
+    }
+    assert_eq!(got[0].objects[1], star);
+    assert_eq!(got[0].objects[2], eq);
+    assert_eq!(got.len(), 2, "drop cap paragraph merges back");
+    assert_eq!(got[1].text, dc.text);
+    assert_eq!(got[1].props, dc.props);
+}
+
+#[test]
+fn settings_core_theme_round_trip() {
+    let mut d = Document::new();
+    d.settings.track_changes = true;
+    d.settings.default_tab = 18.0;
+    d.settings.even_odd_headers = true;
+    d.settings.mirror_margins = true;
+    d.settings.auto_hyphenation = true;
+    d.settings.page_color = Some(Rgb(250, 240, 230));
+    d.settings.major_font = "Cambria".into();
+    d.settings.minor_font = "Calibri".into();
+    d.settings.theme_colors[4] = Rgb(1, 2, 3);
+    d.settings.theme_name = "Mine".into();
+    d.settings.protection = Some("readOnly".into());
+    d.core.title = "Title & <stuff>".into();
+    d.core.subject = "Subj".into();
+    d.core.creator = "Me".into();
+    d.core.keywords = "a, b".into();
+    d.core.description = "Desc".into();
+    d.core.category = "Cat".into();
+    d.core.last_modified_by = "You".into();
+    d.core.created = "2026-01-01T00:00:00Z".into();
+    d.core.modified = "2026-02-01T00:00:00Z".into();
+    d.core.revision = 7;
+    let r = rt(&d);
+    assert_eq!(r.settings, d.settings);
+    assert_eq!(r.core, d.core);
+    // Watermarks aren't stored in DOCX by this crate (yet).
+    let mut w = d.clone();
+    w.settings.watermark = Some(Watermark::default());
+    assert_eq!(rt(&w).settings.watermark, None);
+}
+
+/// A document that uses everything, for second-generation stability checks.
+fn kitchen_sink() -> Document {
+    let mut d = Document::new();
+    let png = tiny_png();
+    let key = d.add_media(png, "png");
+    let num = d.numbering.add_list(ListKind::Numbered);
+    let h = d.add_part(PartKind::Header, vec![para_block(Paragraph::with_text("Head", CharProps::default()))]);
+    let f = d.add_part(PartKind::Footnote, vec![para_block(Paragraph::with_text("Note", CharProps::default()))]);
+    let c = d.add_part(PartKind::Comment, vec![para_block(Paragraph::with_text("Comment", CharProps::default()))]);
+    d.comments.insert(3, Comment { author: "X".into(), part: c, ..Default::default() });
+    d.revisions.push(Revision { kind: RevisionKind::Insert, author: "A".into(), date: String::new() });
+    d.last_section.headers.default = Some(h);
+    let mut blocks: Blocks = Vec::new();
+    let mut p = para_runs(&[
+        ("Hello ", CharProps::default()),
+        ("bold", CharProps { bold: Some(true), ..Default::default() }),
+        (" link", CharProps { link: Some("https://x.org".into()), ..Default::default() }),
+    ]);
+    p.insert_object(0, InlineObject::CommentStart { id: 3 }, &CharProps::default()).unwrap();
+    let end = p.len();
+    p.insert_object(end, InlineObject::CommentEnd { id: 3 }, &CharProps::default()).unwrap();
+    let at = p.text.find("bold").unwrap();
+    p.insert_object(at, InlineObject::NoteRef { kind: NoteKind::Footnote, id: f, custom: String::new() }, &CharProps::default()).unwrap();
+    blocks.push(para_block(p));
+    let mut li = Paragraph::with_text("listed", CharProps { ins: Some(0), ..Default::default() });
+    li.props.numbering = Some(NumRef { num, level: 0 });
+    blocks.push(para_block(li));
+    let mut img = Paragraph::new();
+    img.insert_object(
+        0,
+        InlineObject::Image { media: key, w: 30.0, h: 20.0, alt: "pic".into(), float: Float::default(), crop: [0.0; 4] },
+        &CharProps::default(),
+    )
+    .unwrap();
+    blocks.push(para_block(img));
+    let mut t = Table::new(2, 2, 300.0);
+    t.merge(0, 1, 1, 1);
+    t.rows[0].cells[0] = Cell::with_text("cell");
+    blocks.push(Arc::new(Block::Table(t)));
+    blocks.push(para_block(Paragraph::new()));
+    d.body = blocks;
+    d
+}
+
+#[test]
+fn second_generation_is_stable() {
+    let d1 = rt(&kitchen_sink());
+    let d2 = rt(&d1);
+    assert_eq!(d2.body, d1.body);
+    assert_eq!(d2.parts, d1.parts);
+    assert_eq!(d2.styles, d1.styles);
+    assert_eq!(d2.numbering, d1.numbering);
+    assert_eq!(d2.comments, d1.comments);
+    assert_eq!(d2.revisions, d1.revisions);
+    assert_eq!(d2.settings, d1.settings);
+    assert_eq!(d2.media, d1.media);
+    assert_eq!(d2, d1);
+}
+
+#[test]
+fn builtin_stylesheet_survives() {
+    let d = Document::new();
+    let r = rt(&d);
+    assert_eq!(r.styles, d.styles);
+    assert_eq!(r.body, d.body);
+    assert_eq!(r.last_section, d.last_section);
+}
+
+#[test]
+fn hostile_model_values_still_write() {
+    let mut d = Document::new();
+    let mut p = Paragraph::with_text(
+        "x\u{1}\u{FFFE}y<&>\"'",
+        CharProps { size: Some(f32::NAN), spacing: Some(f32::INFINITY), font: Some("A\"B<".into()), ..Default::default() },
+    );
+    p.props.indent_left = Some(f32::NEG_INFINITY);
+    p.props.line_spacing = Some(LineSpacing::Multiple(f32::NAN));
+    p.insert_object(
+        0,
+        InlineObject::Opaque { format: "docx".into(), xml: "<w:r><w:t>raw</w:t></w:r>".into(), text: "raw".into() },
+        &CharProps::default(),
+    )
+    .unwrap();
+    p.insert_object(0, InlineObject::Opaque { format: "docx".into(), xml: "<broken".into(), text: "fallback".into() }, &CharProps::default())
+        .unwrap();
+    p.insert_object(
+        0,
+        InlineObject::Image { media: "missing.png".into(), w: -5.0, h: f32::NAN, alt: String::new(), float: Float::default(), crop: [f32::NAN; 4] },
+        &CharProps::default(),
+    )
+    .unwrap();
+    p.insert_object(0, InlineObject::CommentEnd { id: 99 }, &CharProps::default()).unwrap();
+    p.insert_object(0, InlineObject::NoteRef { kind: NoteKind::Endnote, id: 12345, custom: String::new() }, &CharProps::default()).unwrap();
+    d.body = vec![para_block(p)];
+    d.media.insert("weird name/../x".into(), Arc::new(b"GIF89a....".to_vec()));
+    d.media.insert("".into(), Arc::new(vec![0, 1, 2]));
+    let bytes = wordforge_docx::write(&d).unwrap();
+    let r = wordforge_docx::read(&bytes).unwrap();
+    let t = paras(&r)[0].plain_text();
+    assert!(t.contains("y<&>\"'"), "{t}");
+    assert!(t.contains("raw") && t.contains("fallback"), "{t}");
+    // Media nothing references aren't written.
+    assert!(r.media.is_empty());
+}
+
+#[test]
+fn ensure_empty_and_table_end_document_is_valid() {
+    let mut d = Document::new();
+    d.body = vec![Arc::new(Block::Table(Table::new(1, 1, 100.0)))];
+    let r = rt(&d);
+    assert!(matches!(*r.body[0], Block::Table(_)));
+    assert!(matches!(**r.body.last().unwrap(), Block::Para(_)));
+    let mut e = Document::new();
+    e.body.clear();
+    let r = rt(&e);
+    assert_eq!(r.body.len(), 1);
+}

@@ -1,89 +1,112 @@
-# WordForge Development Roadmap & Milestone Tracking
+# WordForge roadmap
 
-This document outlines the architectural milestones, feature implementation phases, and delivery timeline for **WordForge**, the Microsoft Word-class desktop word processor for macOS.
+WordForge aims for complete feature parity with Microsoft Word, then goes further on speed, openness
+and agent control. This file tracks where we are honestly. Generated numbers come from
+`cargo xtask parity` (`docs/parity.md`).
 
----
+## Where we are (2026-10-07)
 
-## Phase Overview & Progress Summary
+| Measure | Value |
+|---|---|
+| Commands (every action, scriptable by CLI/MCP/control channel) | **389** |
+| Feature catalog coverage (Word ribbon/menu features with a command) | **354 / 405 (87%)** |
+| **Estimated real feature parity** (depth and fidelity, not just a command) | **~62%** |
+| **Distance to alpha** | **~85% of the way; ≈20–25 h of engineering work** |
+| **Distance to 100% parity** | **≈120–150 h of engineering work** |
+| Tests | ~225 test functions (unit, round-trip, fuzz/proptest, MCP acceptance) |
+| Layout speed (188-page document) | 61 ms cold, **1.4 ms** relayout after an edit |
+| Code | ~44k lines of Rust in 12 crates and 3 apps |
 
-| Phase | Description | Status | Completion |
-| :--- | :--- | :--- | :--- |
-| **Phase 0** | Codebase Audit, Reference Acquisition & Forensic Analysis | Completed | 100% |
-| **Phase 1** | Microsoft Word for Mac Visual Reconstruction | Completed | 100% |
-| **Phase 2** | Core Document Editing Engine | Completed | 100% |
-| **Phase 3** | Multi-Page Pagination & Geometry Engine | Completed | 100% |
-| **Phase 4** | Document Persistence & OpenXML DOCX Interoperability | Completed | 100% |
-| **Phase 5** | Advanced Productivity (Review, References, Mailings, Drawing) | Completed | 100% |
-| **Phase 6** | Autonomous Testing & Forensic Visual Acceptance | Completed | 100% |
-| **Phase 7** | Security, Sandboxing & Memory Lifecycle | Completed | 100% |
-| **Phase 8** | Production macOS Packaging & Automated Release Pipeline | Completed | 100% |
+Catalog coverage overstates parity: many commands are first versions. The real-parity estimate
+weighs each area by how much of Word's behaviour it reproduces, and by how often people use it.
 
----
+## Alpha
 
-## Detailed Milestone Breakdown
+**What we mean by alpha:** someone can write, format and review real documents every day, open
+the .docx files they receive and send back files Word opens cleanly, on every desktop platform
+from a signed download, without losing work.
 
-### Phase 0: Codebase Audit & Reference Research
-- [x] Comprehensive review of existing application structure (`React 18`, `TypeScript 5`, `Vite 6`, `Electron 34`, `TipTap 2`).
-- [x] Extraction and forensic pixel analysis of genuine Microsoft Word for macOS Sequoia/Sonoma ground-truth references.
-- [x] Identified and eliminated legacy Windows design traits (upper-case group labels, diagonal dialog launchers, in-window menu bar).
-- [x] Established persistent architecture documentation, feature checklists, and test suites.
+| Alpha requirement | State |
+|---|---|
+| Editing, formatting, styles, lists, tables, headers/footers, references, review | done (first versions, tested) |
+| Pagination fidelity: wrap, row splitting, hyphenation, drop caps, line numbers, borders | done this arc |
+| Comments in margin balloons, track changes | done |
+| Never-crash standard (no panics, hostile-param fuzzing, panic guard) | done |
+| Autosave and crash recovery | done; needs a soak test |
+| **DOCX fidelity against a corpus of real-world files** (open, render, round-trip, fix) | **not started — the main alpha blocker (≈10 h)** |
+| Footnotes that continue onto the next page; column balancing | missing (≈4 h) |
+| Native printing (today printing goes through PDF) | missing (≈4 h) |
+| Signed builds for macOS, Windows, Linux, FreeBSD and web | pipeline written; universal macOS binaries ready |
+| Real app icon / mascot art | placeholder; native icns bundled |
 
-### Phase 1: Visual Architecture Reconstruction
-- [x] Native macOS Window Chrome: Light grey header (`#F5F6F8`) with 76px traffic light spacer, iOS-style AutoSave switch, and QAT buttons.
-- [x] Word Document Title Dropdown: Centered title with inline rename support and save state indicator.
-- [x] Search Capsule: Pill search bar (`⌘F`) with native styling.
-- [x] Complete 10-Tab Ribbon: Home, Insert, Draw, Design, Layout, References, Mailings, Review, View, Help with Word Blue underline indicator.
-- [x] Fluent Group Dividers: Clean 1px `#E1DFDD` vertical lines without intrusive text headers.
-- [x] Custom Typography Controls: Desktop-grade `FontPicker` (Aptos, Aptos Display, Calibri) and `FontSizePicker`.
-- [x] Authentic Styles Gallery: Live-rendered style tiles with scroll steppers and Styles pane toggle.
-- [x] Document Canvas & Desk: Neutral `#EDEDED` background with true-to-life page sheet drop shadows.
-- [x] Status Bar: 24px height with page index, word count, proofing status, accessibility badge, focus button, and zoom slider.
+So: alpha is roughly **85% of the way**, with about **20–25 hours** of engineering work left, including real-world corpus testing and distribution.
 
-### Phase 2: Core Editing Engine
-- [x] Rich text formatting: Bold, Italic, Underline, Strikethrough, Subscript, Superscript.
-- [x] Typography: Font family, size steppers, case conversion, highlight colors, and Office Theme Color matrix.
-- [x] Paragraph controls: Alignment (Left, Center, Right, Justify), bulleted lists, numbered lists, multilevel indentation, and line spacing (1.0 to 3.0).
-- [x] Tables: Insert table grid picker (up to 10×8), contextual Table Design and Table Layout ribbon tabs, cell background shading, and borders.
-- [x] Rich Media: Inline and block images with resizing and captioning.
-- [x] Search: Find & Replace modal with case-sensitivity, whole-word matching, and occurrence counters.
+## Parity by area
 
-### Phase 3: Real Pagination & Document Layout
-- [x] Synchronous page dimension calculator for standard paper sizes (US Letter, A4, Legal, Executive, A3, A5).
-- [x] Dynamic page flow: Content automatically flows across pages based on printable area and font metrics.
-- [x] Explicit page breaks with Word-style dividing badges.
-- [x] Header and Footer margins with customizable page numbering formats (*Page X of Y*, *1, 2, 3*, roman numerals).
-- [x] Synchronous horizontal and vertical rulers with inch marks and margin drag indicators.
+| Area | Status | Parity |
+|---|---|---|
+| Typing, selection, clipboard, undo, find/replace | Solid; IME, autocorrect, smart quotes, list autoformat | 85% |
+| Character & paragraph formatting | Nearly all properties; Font/Paragraph dialogs | 85% |
+| Styles (gallery, pane, create/modify, style sets, themes) | Good | 75% |
+| Lists (bullets, numbering, multilevel, restart, set value) | Good | 75% |
+| Tables (insert, merge/split, styles, borders, header rows, sort, formula) | Good; rows split across pages; no drawn tables, no nested-table polish | 72% |
+| Page layout (margins, size, orientation, columns, breaks, sections) | Good; page borders, line numbers, vertical alignment, drop caps, hyphenation; columns don't balance | 72% |
+| Headers/footers, page numbers, fields | Good; first/even/odd, link to previous | 70% |
+| Footnotes/endnotes | Placed and editable; long notes don't continue onto the next page | 60% |
+| References (TOC, citations APA/MLA/Chicago/IEEE, bibliography, index, figures, cross-refs, TOA) | Working first versions | 60% |
+| Review (spelling, grammar, thesaurus, comments, track changes, compare, protect) | Good; comment balloons in the margin; no track-changes balloons | 75% |
+| Mailings (mail merge, rules, preview, envelopes, labels) | Working | 70% |
+| Pictures & shapes (insert, size, crop, recolour, effects, styles, float position) | Text wraps around floats (rectangular); text boxes render their text; no tight/contour wrap, no rotation handles | 55% |
+| Draw tab (ink), SmartArt, charts, 3D models, equations editor | Not started / linear equations only | 5% |
+| File formats: DOCX read/write | Good (Word opens our files); charts/SmartArt/OLE dropped; untested on a real-world corpus | 75% |
+| File formats: PDF, ODT, RTF, HTML, Markdown, TXT | Working | 70% |
+| View modes (print, web, draft, read, focus, zoom, navigation pane) | Working | 70% |
+| Backstage (new from templates, open, info, export, options) | Working; printing goes through PDF | 55% |
+| Agent control (CLI, MCP, control channel, macros) | Beyond Word | 100%+ |
 
-### Phase 4: OpenXML DOCX Interoperability & File Operations
-- [x] Standards-compliant OpenXML `.docx` binary exporter via `docx` library.
-- [x] High-fidelity `.docx` parser and importer via `mammoth` and `jszip`.
-- [x] Native file system integration: Open, Save, Save As (`⌘S`, `⇧⌘S`).
-- [x] Background AutoSave every 30 seconds with local storage backup.
-- [x] High-resolution PDF export and print formatting (`⌘P`).
+## Estimate to 100%
 
-### Phase 5: Advanced Productivity Features
-- [x] Review & Revisions: Full Track Changes engine (insertion, deletion, author tracking, accept/reject individual & batch).
-- [x] Comments: Interactive comments and replies sidebar (`⌘⌥M`).
-- [x] References: Heading-based Table of Contents generator, BibTeX/CSL citation database, and footnotes.
-- [x] Mail Merge: CSV recipient data importer, merge field substitution (`<<Field>>`), record stepper, and merged document generation.
-- [x] Digital Inking: Canvas drawing layer with Pen, Neon Highlighter, Eraser, color selector, and stroke width.
-- [x] Themes & Design: Coordinated document themes (Office, Modern, Elegant, Editorial) and page watermarks.
+**About 120–150 hours of engineering work**, in this order:
 
-### Phase 6: Autonomous Quality Verification
-- [x] 19 passing unit and integration tests across all core engines (including semantic version comparison and network fallback).
-- [x] Headless Chrome visual acceptance testing at 1280×820 desktop resolution.
-- [x] Direct side-by-side comparison against genuine Microsoft Word for Mac App Store hero images.
+1. **Alpha blockers** (≈20–25 h): DOCX fidelity corpus, footnote continuation, column balancing,
+   native printing, autosave soak test, first signed release.
+2. **Objects** (≈15 h): tight/through (contour) wrap, rotation and resize handles on the canvas,
+   grouping, z-order polish, track-changes balloons and formatting revisions.
+3. **Draw tab / ink** (≈15 h).
+4. **Charts (own renderer) and SmartArt-style diagrams** (≈20 h).
+5. **Equation editor (OMML read/write, 2D layout)** (≈15 h).
+6. **Dialog depth**: every Word dialog with all its options (Font, Paragraph, Tabs, Borders and
+   Shading, Page Setup, Styles, Columns, Index/TOC options, Mail Merge wizard, Options panes) (≈20 h).
+7. **Accessibility (screen readers), localisation, RTL and complex scripts** (≈15 h).
+8. **Long tail**: kerning/ligature options, drawn tables, nested-table polish, more templates,
+   Word's less-used commands still missing from the catalog (≈10 h).
 
-### Phase 7: Security & Reliability
-- [x] Context isolation enabled in Electron runtime.
-- [x] Node integration disabled in renderer.
-- [x] Deep ad-hoc codesigning to clear macOS Gatekeeper Quarantine attributes.
-- [x] 100% offline-first architecture with zero external telemetry or cloud dependencies.
+## Milestones
 
-### Phase 8: macOS Packaging & Release Automation
-- [x] Multi-target macOS distribution: `WordForge.app`, `WordForge-arm64.dmg`, and `WordForge-arm64-mac.zip`.
-- [x] Full automatic application updates via `electron-updater` with GitHub Releases API streaming fallback.
-- [x] Two-phase update notification and restart dialog (**Update Now** / **Later**, **Restart Now** / **Restart Later**).
-- [x] Real-time download progress tracking (speed, transferred bytes, and total size).
-- [x] Unsaved document protection with **Save & Restart** workflow before quitting.
-- [x] Automated GitHub Release publishing script (`npm run build:release`).
+| # | Milestone | State |
+|---|---|---|
+| M0 | Skeleton + vertical slice (model, layout, render, engine, Word-style UI, CLI, MCP, web) | **done** |
+| M1 | DOCX I/O | **done** (first version; corpus testing next) |
+| M2 | Home tab complete | **done** |
+| M3 | Insert tab | mostly done (charts/SmartArt/icons/3D missing) |
+| M4 | Layout + Design tabs | **done** except column balancing |
+| M5 | Tables | **done** (row splitting landed) |
+| M6 | References | first version done; footnote continuation missing |
+| M7 | Review | **done** (margin balloons landed) |
+| M8 | View | mostly done |
+| M9 | Mailings | done (first version) |
+| M10 | File/Backstage | mostly done; native printing missing |
+| M11 | Draw + objects | text wrap and text boxes done; ink, rotation, grouping missing |
+| M12 | Formats breadth (PDF, ODT, RTF, HTML, MD, TXT) | **done** (first versions) |
+| M13 | Performance budgets | on track (1.4 ms relayout) |
+| M14 | 1.0 polish, packaging, signing | pipeline written; waiting on remote and secrets |
+
+## Recently landed
+- Text wraps around floating pictures and shapes; text boxes lay out their own text.
+- Table rows split across pages between lines (Can't Split honoured, header rows repeat).
+- Drop caps; automatic hyphenation with Word's 0.25" hyphenation zone; soft hyphens.
+- Page borders measured from the page edge, line numbers, vertical alignment, column separators.
+- Comment balloons in a markup area beside each page, with leader lines to their anchors.
+
+## Next
+The DOCX fidelity corpus, then footnote continuation, column balancing and native printing.

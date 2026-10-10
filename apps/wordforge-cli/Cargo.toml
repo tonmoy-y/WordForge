@@ -1,0 +1,21 @@
+[package]
+name = "wordforge-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "WordForge command line: convert, inspect, render, run commands, MCP server"
+
+[[bin]]
+name = "wordforge-cli"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+wordforge-doc = { workspace = true }
+wordforge-engine = { workspace = true }
+wordforge-render = { workspace = true }
+wordforge-mcp = { workspace = true }
+serde_json = { workspace = true }
