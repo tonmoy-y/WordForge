@@ -122,10 +122,16 @@ fn services() -> Services {
 /// Window, Dock and taskbar icon.
 fn app_icon() -> Option<egui::IconData> {
     #[cfg(target_os = "macos")]
-    let png: &[u8] = include_bytes!("../../../assets/app-icon/wordforge-macos-512.png");
+    {
+        // On macOS, the Dock and application switcher display the high-resolution .icns
+        // from Contents/Resources/WordForge.icns. Overriding with a raster tile is not needed.
+        None
+    }
     #[cfg(not(target_os = "macos"))]
-    let png: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ai.storyteller.wordforge.png");
-    eframe::icon_data::from_png_bytes(png).map_err(|e| log::warn!("app icon: {e}")).ok()
+    {
+        let png: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ai.storyteller.wordforge.png");
+        eframe::icon_data::from_png_bytes(png).map_err(|e| log::warn!("app icon: {e}")).ok()
+    }
 }
 
 /// The commit the build came from (short), or `dev`.

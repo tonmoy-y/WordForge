@@ -139,8 +139,8 @@ Download the latest version of WordForge directly for your Mac from [GitHub Rele
 
 #### Checksums (v2.0.0)
 ```text
-f293045cda68639c2b3ffb34da50525c6ed2940d37d8de74b26a68567d67043e  WordForge-2.0.0-macos-universal.dmg
-dee85e31edc929812830c7e3b6977b334bd7b8d3e06368e9873202d04d3c7c1f  WordForge-2.0.0-macos-universal.zip
+90e24de81d1abd819783b2e98763e0f049528be25d882fde331226fecb378e50  WordForge-2.0.0-macos-universal.dmg
+8ed5f7fae3466dfc6348d970702d472325673707e2b242e7b531fdf965012fea  WordForge-2.0.0-macos-universal.zip
 ```
 
 ---
