@@ -28,5 +28,13 @@
       }
     ],
     "identity": null
-  }
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "tonmoy-y",
+      "repo": "WordForge",
+      "releaseType": "release"
+    }
+  ]
 }

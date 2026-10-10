@@ -1,8 +1,10 @@
 import { app, BrowserWindow, Menu, MenuItemConstructorOptions, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { AppUpdater } from './updater';
 
 let mainWindow: BrowserWindow | null = null;
+let appUpdater: AppUpdater | null = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -23,6 +25,13 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
+    if (mainWindow) {
+      appUpdater = new AppUpdater(mainWindow);
+      // Auto check on launch after brief delay
+      setTimeout(() => {
+        appUpdater?.checkForUpdates().catch(() => {});
+      }, 3000);
+    }
   });
 
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -52,7 +61,13 @@ function setupMenu(): void {
             label: 'WordForge',
             submenu: [
               { label: 'About WordForge', click: () => mainWindow?.webContents.send('menu:about') },
-              { label: 'Check for Updates…', click: () => mainWindow?.webContents.send('menu:checkUpdates') },
+              {
+                label: 'Check for Updates…',
+                click: () => {
+                  if (appUpdater) appUpdater.checkForUpdates();
+                  mainWindow?.webContents.send('menu:checkUpdates');
+                },
+              },
               { type: 'separator' as const },
               { label: 'Preferences…', accelerator: 'CmdOrCtrl+,', click: () => mainWindow?.webContents.send('menu:preferences') },
               { type: 'separator' as const },
@@ -165,7 +180,10 @@ function setupMenu(): void {
         { type: 'separator' as const },
         {
           label: 'Check for Updates…',
-          click: () => mainWindow?.webContents.send('menu:checkUpdates'),
+          click: () => {
+            if (appUpdater) appUpdater.checkForUpdates();
+            mainWindow?.webContents.send('menu:checkUpdates');
+          },
         },
         {
           label: 'About WordForge Pro',

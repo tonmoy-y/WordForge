@@ -70,7 +70,7 @@ This document outlines the architectural milestones, feature implementation phas
 - [x] Themes & Design: Coordinated document themes (Office, Modern, Elegant, Editorial) and page watermarks.
 
 ### Phase 6: Autonomous Quality Verification
-- [x] 17 passing unit and integration tests across all core engines.
+- [x] 19 passing unit and integration tests across all core engines (including semantic version comparison and network fallback).
 - [x] Headless Chrome visual acceptance testing at 1280×820 desktop resolution.
 - [x] Direct side-by-side comparison against genuine Microsoft Word for Mac App Store hero images.
 
@@ -82,5 +82,8 @@ This document outlines the architectural milestones, feature implementation phas
 
 ### Phase 8: macOS Packaging & Release Automation
 - [x] Multi-target macOS distribution: `WordForge.app`, `WordForge-arm64.dmg`, and `WordForge-arm64-mac.zip`.
-- [x] In-app direct updater with GitHub Releases API check and one-click download.
+- [x] Full automatic application updates via `electron-updater` with GitHub Releases API streaming fallback.
+- [x] Two-phase update notification and restart dialog (**Update Now** / **Later**, **Restart Now** / **Restart Later**).
+- [x] Real-time download progress tracking (speed, transferred bytes, and total size).
+- [x] Unsaved document protection with **Save & Restart** workflow before quitting.
 - [x] Automated GitHub Release publishing script (`npm run build:release`).

@@ -82,5 +82,10 @@ Status Legend:
 | **DMG Disk Image** | `[x]` | Packaged with Applications shortcut drag-and-drop installer |
 | **Portable ZIP Archive** | `[x]` | Direct execution archive |
 | **Ad-Hoc Code Signing** | `[x]` | Deep code-signing applied via `codesign --deep -s -` to clear Gatekeeper quarantine |
-| **In-App Direct Updater** | `[x]` | UI dialog checks latest GitHub Release tag and downloads installer |
+| **Automatic Updates** | `[x]` | Native `electron-updater` and GitHub Releases API streaming updater |
+| **Update Notification** | `[x]` | Displays current installed version, available version, and release notes |
+| **Download Experience** | `[x]` | Live progress tracking (percentage, MB transferred, transfer speed in MB/s) |
+| **Uninterrupted Editing** | `[x]` | Background download allows continuous document editing without UI blocking |
+| **Restart Prompt** | `[x]` | Two-phase dialog: **Restart Now** (safely quit and relaunch) vs **Restart Later** |
+| **Unsaved Edits Guard** | `[x]` | Checks `isDirty` state before quit and switches action to **Save & Restart** |
 | **Automated Publishing** | `[x]` | Script pipeline (`npm run build:release`) publishes releases directly to GitHub |

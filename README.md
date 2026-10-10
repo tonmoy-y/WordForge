@@ -53,10 +53,14 @@ Download the latest version directly from the [GitHub Releases](https://github.c
 - **View:** Print Layout, Web Layout, Read Mode, Focus Mode, and Zoom controls (10% to 500%).
 - **Help:** Keyboard shortcuts reference, documentation, and in-app update checks.
 
-### 3. In-App Direct Updater
-- **Automated Update Checks:** Checks GitHub Releases via the GitHub API directly from the desktop UI.
-- **One-Click Update Dialog:** Accessible from the top Title Bar ("Check for Updates"), the application menu (`Help > Check for Updates…`), or the Help ribbon tab.
-- **Direct Installer Download:** Automatically downloads the latest DMG installer directly to your Downloads folder and reveals it for installation.
+### 3. Automatic Updates & Safe Staging
+- **Background Update Checks:** Non-blocking launch check and manual "Check for Updates" via application menu (`WordForge > Check for Updates…`, `Help > Check for Updates…`), Help tab, or Title Bar.
+- **Two-Phase Update Workflow:** Displays current installed version, available version, release notes, with **Update Now** and **Later** buttons.
+- **Live Download Progress:** Real-time transfer stats including percentage, byte progress (`64.0 MB of 100.0 MB`), and network speed (`4.0 MB/s`).
+- **Background Processing:** Downloads update files without interrupting active document typing or formatting.
+- **Restart Prompt:** Displays verified staging confirmation with **Restart Now** (safely quits, stages, and relaunches into the new version) and **Restart Later**.
+- **Unsaved Document Guard:** Automatically detects dirty document state and warns user, offering a **Save & Restart** option to prevent data loss.
+- **Dual Update Engine:** Electron-native `electron-updater` integration backed by resilient GitHub Releases streaming fallback for ad-hoc and development builds.
 
 ### 4. File Interoperability & Privacy
 - **Office Open XML (DOCX):** Standards-compliant `.docx` import and export preserving headings, formatting, tables, lists, and metadata.

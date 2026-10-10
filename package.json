@@ -48,6 +48,7 @@
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
     "docx": "^9.1.1",
+    "electron-updater": "^6.8.9",
     "jszip": "^3.10.1",
     "lucide-react": "^0.475.0",
     "mammoth": "^1.9.0",

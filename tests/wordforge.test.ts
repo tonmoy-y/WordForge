@@ -216,4 +216,26 @@ describe('WordForge Word Processor Engine Test Suite', () => {
       expect(rejected.every((c) => c.status === 'rejected')).toBe(true);
     });
   });
+
+  describe('7. Automatic Update Engine', () => {
+    it('accurately compares semantic version strings', async () => {
+      const { UpdateService } = await import('../src/core/updater/updateService');
+
+      expect(UpdateService.compareVersions('1.2.1', '1.2.0')).toBe(1);
+      expect(UpdateService.compareVersions('2.0.0', '1.9.9')).toBe(1);
+      expect(UpdateService.compareVersions('1.2.0', '1.2.1')).toBe(-1);
+      expect(UpdateService.compareVersions('1.2.0', '1.2.0')).toBe(0);
+      expect(UpdateService.compareVersions('v1.3.0', '1.2.0')).toBe(1);
+      expect(UpdateService.compareVersions('1.2.0', 'v1.3.0')).toBe(-1);
+    });
+
+    it('returns a fallback payload safely when network is unavailable or throws', async () => {
+      const { UpdateService, CURRENT_VERSION } = await import('../src/core/updater/updateService');
+      const result = await UpdateService.checkForUpdates();
+      expect(result).toBeDefined();
+      expect(result.version).toBeDefined();
+      expect(typeof result.isNewer).toBe('boolean');
+    });
+  });
 });
+

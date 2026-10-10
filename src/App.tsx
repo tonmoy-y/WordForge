@@ -385,6 +385,21 @@ export const App: React.FC = () => {
     }
   }, [docState, editor]);
 
+  // Global dialog opener and automatic update notification listener
+  useEffect(() => {
+    (window as any).__openUpdateDialog = () => setActiveDialog('update');
+
+    const api = (window as any).electronAPI;
+    if (api && api.updater && api.updater.onAvailable) {
+      const unsub = api.updater.onAvailable((info: any) => {
+        if (info && info.isNewer) {
+          setActiveDialog('update');
+        }
+      });
+      return () => unsub();
+    }
+  }, []);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F5F6F8] select-none text-[#201F1E]">
       {/* 1. Word for Mac Title Bar */}
@@ -575,7 +590,11 @@ export const App: React.FC = () => {
         <SpellCheckDialog editor={editor} onClose={() => setActiveDialog(null)} />
       )}
       {activeDialog === 'update' && (
-        <UpdateDialog onClose={() => setActiveDialog(null)} />
+        <UpdateDialog
+          onClose={() => setActiveDialog(null)}
+          isDirty={docState.isDirty}
+          onSaveDocument={handleSave}
+        />
       )}
     </div>
   );
