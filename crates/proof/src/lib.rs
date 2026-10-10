@@ -113,8 +113,6 @@ const EXTRA: &[&str] = &[
     "podcasts",
     "hashtag",
     "wordforge",
-    "artcraft",
-    "discord",
     "github",
     "rust",
     "ok",

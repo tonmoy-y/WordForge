@@ -83,7 +83,7 @@ impl Default for UiState {
             recent: Vec::new(),
             dark: false,
             nav_tab: "headings".into(),
-            show_discord: true,
+            show_discord: false,
             author: String::new(),
             window: None,
             language: i18n::AUTO.into(),
@@ -294,7 +294,7 @@ impl WordApp {
                 json!({})
             }
             "ui.discord" => {
-                self.canvas.open_url = Some("https://discord.gg/artcraft".into());
+                self.canvas.open_url = Some("https://github.com/tonmoy-y/WordForge".into());
                 json!({})
             }
             _ => return None,

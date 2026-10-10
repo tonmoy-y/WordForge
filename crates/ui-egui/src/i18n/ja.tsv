@@ -2,7 +2,6 @@
 
 	(no suggestions)	（候補なし）
 	1.5 Line Spacing	1.5 行
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	Rust でゼロから書かれた、無料のオープンソース ワープロです。\nArtCraft チームの Crafting Apps のひとつです。
 	About	情報
 	About WordForge	WordForge について
 	Accept	承諾
@@ -331,8 +330,6 @@
 	Inspect Document	ドキュメント検査
 	Interface language:	表示言語:
 	Italic	斜体
-	Join the ArtCraft community on Discord	Discord の ArtCraft コミュニティに参加
-	Join us on Discord: discord.gg/artcraft	Discord で参加: discord.gg/artcraft
 	Justify	両端揃え
 	Keep Lines Together	段落を分割しない
 	Keep lines together	段落を分割しない
@@ -388,7 +385,7 @@
 	Merge Formatting	書式を結合
 	Merged PRs	マージ済みの PR
 	Mirrored	見開きページ
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordForge contributors.	MIT OR Apache-2.0。Copyright (c) 2026 ArtCraft チームおよび WordForge の貢献者。
+	MIT OR Apache-2.0. Copyright (c) 2026 WordForge contributors.	MIT OR Apache-2.0。Copyright (c) 2026 WordForge の貢献者。
 	Moderate	やや狭い
 	Modify Style	スタイルの変更
 	Modify…	変更…

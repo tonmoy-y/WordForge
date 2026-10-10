@@ -13,7 +13,7 @@
   <key>CFBundleExecutable</key>
   <string>WordForge</string>
   <key>CFBundleIdentifier</key>
-  <string>ai.storyteller.wordforge</string>
+  <string>com.tonmoy.wordforge</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>

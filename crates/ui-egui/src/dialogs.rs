@@ -726,15 +726,13 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
                     let build = option_env!("WORDFORGE_BUILD_SHA").map(|s| s.get(..8).unwrap_or(s)).unwrap_or(tl!("development build"));
                     ui.label(crate::i18n::fmt(tl!("Version {version} ({build})"), &[("version", env!("CARGO_PKG_VERSION")), ("build", build)]));
                     ui.label(tl!(
-                        "A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team."
+                        "A fast, native Microsoft Word for Mac document editor written in pure Rust."
                     ));
                     ui.add_space(6.0);
-                    ui.hyperlink_to(tl!("github.com/tonmoy-y/WordForge"), "https://github.com/tonmoy-y/WordForge");
-                    ui.hyperlink_to(tl!("Join us on Discord: discord.gg/artcraft"), "https://discord.gg/artcraft");
-                    ui.hyperlink_to(tl!("Source code: github.com/tonmoy-y/WordForge"), "https://github.com/tonmoy-y/WordForge");
+                    ui.hyperlink_to(tl!("GitHub Repository: github.com/tonmoy-y/WordForge"), "https://github.com/tonmoy-y/WordForge");
                     ui.add_space(6.0);
                     ui.label(
-                        egui::RichText::new(tl!("MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordForge contributors."))
+                        egui::RichText::new(tl!("MIT OR Apache-2.0. Copyright (c) 2026 WordForge contributors."))
                             .small()
                             .weak(),
                     );

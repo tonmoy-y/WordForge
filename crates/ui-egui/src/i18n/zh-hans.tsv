@@ -13,7 +13,6 @@
 
 	(no suggestions)	（无建议）
 	1.5 Line Spacing	1.5 倍行距
-	A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team.	一款用 Rust 从零编写的免费开源文字处理软件。\n属于 ArtCraft 团队的 Crafting Apps 系列。
 	About	关于
 	About WordForge	关于 WordForge
 	Accept	接受
@@ -342,8 +341,6 @@
 	Inspect Document	检查文档
 	Interface language:	界面语言：
 	Italic	倾斜
-	Join the ArtCraft community on Discord	加入 Discord 上的 ArtCraft 社区
-	Join us on Discord: discord.gg/artcraft	在 Discord 上加入我们：discord.gg/artcraft
 	Justify	两端对齐
 	Keep Lines Together	段中不分页
 	Keep lines together	段中不分页
@@ -399,7 +396,7 @@
 	Merge Formatting	合并格式
 	Merged PRs	已合并的 PR
 	Mirrored	对称
-	MIT OR Apache-2.0. Copyright (c) 2026 ArtCraft Team and the WordForge contributors.	MIT OR Apache-2.0。版权所有 (c) 2026 ArtCraft 团队及 WordForge 贡献者。
+	MIT OR Apache-2.0. Copyright (c) 2026 WordForge contributors.	MIT OR Apache-2.0。版权所有 (c) 2026 WordForge 贡献者。
 	Moderate	适中
 	Modify Style	修改样式
 	Modify…	修改…

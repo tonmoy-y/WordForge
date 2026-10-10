@@ -135,7 +135,7 @@ impl Server {
                     "capabilities": {"tools": {}, "resources": {}},
                     "serverInfo": {"name": "wordforge", "title": "WordForge", "version": env!("CARGO_PKG_VERSION"), "websiteUrl": "https://github.com/tonmoy-y/WordForge"},
                     "instructions": format!(
-                        "{INSTRUCTIONS} Backend: {}. Community: https://discord.gg/artcraft · https://github.com/tonmoy-y/WordForge · https://github.com/tonmoy-y/WordForge",
+                        "{INSTRUCTIONS} Backend: {}. Repository: https://github.com/tonmoy-y/WordForge",
                         self.backend.describe()
                     ),
                 }))

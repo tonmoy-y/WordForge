@@ -8,7 +8,7 @@
   <name>WordForge</name>
   <summary>Write and design documents; open and save Word files</summary>
   <developer id="ai.storyteller">
-    <name>Learning Machines LLC</name>
+    <name>WordForge</name>
   </developer>
   <description>
     <p>
@@ -21,7 +21,7 @@
   <url type="homepage">https://github.com/tonmoy-y/WordForge</url>
   <url type="bugtracker">https://github.com/tonmoy-y/WordForge/issues</url>
   <url type="help">https://github.com/tonmoy-y/WordForge</url>
-  <url type="contact">https://discord.gg/artcraft</url>
+  <url type="contact">https://github.com/tonmoy-y/WordForge</url>
   <categories>
     <category>Office</category>
     <category>WordProcessor</category>

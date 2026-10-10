@@ -16,7 +16,7 @@ fn main() {
     res.set_icon("../../assets/app-icon/wordforge.ico")
         .set("ProductName", "WordForge")
         .set("FileDescription", "WordForge word processor")
-        .set("CompanyName", "Learning Machines LLC")
+        .set("CompanyName", "WordForge")
         .set("LegalCopyright", "Copyright (c) the WordForge authors. MIT OR Apache-2.0.")
         .set("OriginalFilename", "wordforge.exe")
         .set("InternalName", "wordforge");

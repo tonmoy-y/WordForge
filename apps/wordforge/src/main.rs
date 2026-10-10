@@ -169,7 +169,7 @@ fn main() -> eframe::Result {
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("WordForge")
-            .with_app_id("ai.storyteller.wordforge")
+            .with_app_id("com.tonmoy.wordforge")
             .with_inner_size([1440.0, 920.0])
             .with_min_inner_size([760.0, 480.0])
             .with_drag_and_drop(true)

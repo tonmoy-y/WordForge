@@ -14,13 +14,13 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
       Name="WordForge"
-      Manufacturer="Learning Machines LLC"
+      Manufacturer="WordForge"
       Version="$(var.Version)"
       UpgradeCode="075497F9-E861-45D0-9C7F-A74F8C34E6BA"
       Scope="perMachine"
       Compressed="yes"
       Language="1033">
-    <SummaryInformation Description="WordForge word processor" Manufacturer="Learning Machines LLC" />
+    <SummaryInformation Description="WordForge word processor" Manufacturer="WordForge" />
     <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
          (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
     <MajorUpgrade AllowSameVersionUpgrades="yes"
@@ -31,7 +31,7 @@
     <Property Id="ARPPRODUCTICON" Value="WordForgeIcon.ico" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/tonmoy-y/WordForge" />
     <Property Id="ARPURLUPDATEINFO" Value="https://github.com/tonmoy-y/WordForge" />
-    <Property Id="ARPHELPLINK" Value="https://discord.gg/artcraft" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/tonmoy-y/WordForge" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="WordForge" />
