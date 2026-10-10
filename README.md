@@ -18,6 +18,18 @@ Download the latest version directly from the [GitHub Releases](https://github.c
 - **macOS DMG Installer (Apple Silicon):** [`WordForge-1.0.1-arm64.dmg`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64.dmg)
 - **macOS Portable Archive (Apple Silicon):** [`WordForge-1.0.1-arm64-mac.zip`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64-mac.zip)
 
+> [!NOTE]
+> **First-Time Launch on macOS (Gatekeeper)**
+> Because WordForge is an open-source application without paid Apple Developer ID notarization, macOS Gatekeeper may show a warning when launching an app downloaded via web browsers.
+> 
+> To launch WordForge:
+> - **Option 1 (Recommended Terminal command):**
+>   ```bash
+>   xattr -cr /Applications/WordForge.app
+>   ```
+> - **Option 2 (System Settings):** Open **System Settings > Privacy & Security**, scroll to **Security**, and click **Open Anyway**.
+> - **Option 3 (Finder):** Right-click (or Control-click) `WordForge.app`, select **Open**, and click **Open** in the prompt.
+
 ---
 
 ## Features

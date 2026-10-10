@@ -10,6 +10,7 @@
     "dist-electron/**/*",
     "package.json"
   ],
+  "afterPack": "scripts/afterPack.js",
   "mac": {
     "category": "public.app-category.productivity",
     "target": [
