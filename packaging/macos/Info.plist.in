@@ -55,6 +55,18 @@
       <string>Editor</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>docx</string>
+        <string>docm</string>
+        <string>dotx</string>
+        <string>odt</string>
+        <string>rtf</string>
+        <string>txt</string>
+        <string>md</string>
+        <string>html</string>
+        <string>htm</string>
+      </array>
       <key>LSItemContentTypes</key>
       <array>
         <string>org.openxmlformats.wordprocessingml.document</string>

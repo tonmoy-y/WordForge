@@ -9,3 +9,4 @@ plan/
 /.claude/
 /target-*/
 /fallback-fonts/
+*.dylib

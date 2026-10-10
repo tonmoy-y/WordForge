@@ -111,8 +111,14 @@ sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"
 
+# Native macOS bridge for Finder document opening
+mkdir -p "$APP/Contents/Frameworks"
+clang -dynamiclib -arch arm64 -arch x86_64 -framework Cocoa -liconv "$HERE/wordforge_macos_bridge.m" -o "$APP/Contents/Frameworks/libwordforge_bridge.dylib"
+install_name_tool -change /usr/lib/libiconv.2.dylib @executable_path/../Frameworks/libwordforge_bridge.dylib "$APP/Contents/MacOS/WordForge"
+
 # Sign inside-out: nested code first, then the bundle itself (no --deep on the final signature).
-# Today the only nested code is the main executable; frameworks/helpers would be signed here too.
+# Sign frameworks, then main executable, then app bundle.
+sign --options runtime "$APP/Contents/Frameworks/libwordforge_bridge.dylib"
 sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP/Contents/MacOS/WordForge"
 sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP"
 codesign --verify --strict --deep --verbose=2 "$APP"
