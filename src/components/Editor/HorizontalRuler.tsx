@@ -12,7 +12,6 @@ interface HorizontalRulerProps {
 export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
   pageSetup,
   zoomLevel,
-  onUpdateMargins,
 }) => {
   const { pageWidthPx, marginLeftPx, marginRightPx } = getPageDimensionsPx(pageSetup);
   const scale = zoomLevel / 100;
@@ -20,10 +19,10 @@ export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
   const printableInches = Math.floor(printableWidthPx / 96);
 
   return (
-    <div className="horizontal-ruler-container h-[22px] bg-[#EDEFEF] border-b border-[#CBD5E1] flex items-center justify-center relative select-none w-full overflow-hidden">
+    <div className="horizontal-ruler-container h-[20px] bg-[#EDEDED] border-b border-[#E1DFDD] flex items-center justify-center relative select-none w-full overflow-hidden">
       {/* Ruler Body matching Page Width & Zoom */}
       <div
-        className="horizontal-ruler h-[18px] bg-[#EDEFEF] border-x border-[#CBD5E1] relative select-none shadow-xs"
+        className="horizontal-ruler h-[16px] bg-[#F8F9FA] border-x border-[#E1DFDD] relative select-none"
         style={{
           width: `${pageWidthPx * scale}px`,
           minWidth: `${pageWidthPx * scale}px`,
@@ -31,22 +30,22 @@ export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
       >
         {/* 1. Left margin shaded area */}
         <div
-          className="absolute left-0 top-0 bottom-0 bg-[#D8DEE4] border-r border-[#94A3B8]"
+          className="absolute left-0 top-0 bottom-0 bg-[#EDEBE9] border-r border-[#D1D1D6]"
           style={{ width: `${marginLeftPx * scale}px` }}
         >
           {/* First Line Indent (inverted triangle at top) */}
           <div
-            className="absolute -top-[1px] right-0 translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-[#185ABD] cursor-ew-resize z-30"
+            className="absolute -top-[1px] right-0 translate-x-1/2 w-0 h-0 border-l-[3.5px] border-l-transparent border-r-[3.5px] border-r-transparent border-t-[4.5px] border-t-[#323130] cursor-ew-resize z-30"
             title={`First Line Indent: ${pageSetup.margins.left}"`}
           />
           {/* Hanging Indent (upward triangle at bottom) */}
           <div
-            className="absolute bottom-[4px] right-0 translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[5px] border-b-[#185ABD] cursor-ew-resize z-30"
+            className="absolute bottom-[3px] right-0 translate-x-1/2 w-0 h-0 border-l-[3.5px] border-l-transparent border-r-[3.5px] border-r-transparent border-b-[4.5px] border-b-[#323130] cursor-ew-resize z-30"
             title={`Hanging Indent: ${pageSetup.margins.left}"`}
           />
           {/* Left Indent base box */}
           <div
-            className="absolute bottom-0 right-0 translate-x-1/2 w-[7px] h-[3px] bg-[#185ABD] cursor-ew-resize z-30"
+            className="absolute bottom-0 right-0 translate-x-1/2 w-[7px] h-[3px] bg-[#323130] cursor-ew-resize z-30"
             title={`Left Indent: ${pageSetup.margins.left}"`}
           />
         </div>
@@ -66,15 +65,15 @@ export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
             const isInch = qIdx % 4 === 0;
             const isHalf = qIdx % 2 === 0;
 
-            if (isInch) return null; // Drawn with inch labels
+            if (isInch) return null;
 
             return (
               <div
                 key={`q-${qIdx}`}
-                className="absolute top-0 w-px bg-[#94A3B8]"
+                className="absolute top-0 w-px bg-[#8A8886]"
                 style={{
                   left: `${x}px`,
-                  height: isHalf ? '5px' : '3px',
+                  height: isHalf ? '4px' : '2.5px',
                 }}
               />
             );
@@ -93,15 +92,15 @@ export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
                 style={{ left: `${x}px`, transform: 'translateX(-50%)' }}
               >
                 {/* Top tick */}
-                <div className="w-px h-[5px] bg-[#64748B]" />
+                <div className="w-px h-[4px] bg-[#605E5C]" />
 
                 {/* Number label */}
-                <span className="text-[9px] font-sans font-semibold text-[#475569] leading-none mb-0.5 select-none">
+                <span className="text-[9px] font-sans font-normal text-[#605E5C] leading-none select-none">
                   {inchNum}
                 </span>
 
                 {/* Bottom tick */}
-                <div className="w-px h-[3px] bg-[#64748B]" />
+                <div className="w-px h-[3px] bg-[#8A8886]" />
               </div>
             );
           })}
@@ -109,12 +108,12 @@ export const HorizontalRuler: React.FC<HorizontalRulerProps> = ({
 
         {/* 3. Right margin shaded area */}
         <div
-          className="absolute right-0 top-0 bottom-0 bg-[#D8DEE4] border-l border-[#94A3B8]"
+          className="absolute right-0 top-0 bottom-0 bg-[#EDEBE9] border-l border-[#D1D1D6]"
           style={{ width: `${marginRightPx * scale}px` }}
         >
-          {/* Right Indent marker (upward triangle) */}
+          {/* Right Indent Marker (upward triangle) */}
           <div
-            className="absolute bottom-0 left-0 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-[#185ABD] cursor-ew-resize z-30"
+            className="absolute bottom-0 left-0 -translate-x-1/2 w-0 h-0 border-l-[3.5px] border-l-transparent border-r-[3.5px] border-r-transparent border-b-[5px] border-b-[#323130] cursor-ew-resize z-30"
             title={`Right Indent: ${pageSetup.margins.right}"`}
           />
         </div>

@@ -1,6 +1,6 @@
 {
   "name": "wordforge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "WordForge - Professional Desktop Word Processor for macOS",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "electron:dev": "vite",
     "electron:build": "npm run build && electron-builder --mac",
-    "release": "node scripts/release.js",
+    "release": "node scripts/release.js --force",
     "build:release": "npm run electron:build && node scripts/release.js"
   },
   "keywords": [

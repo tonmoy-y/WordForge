@@ -42,52 +42,45 @@ export const DEFAULT_METADATA: DocumentMetadata = {
 };
 
 export const INITIAL_DOCUMENT_HTML = `
-<h1>WordForge Desktop Word Processor</h1>
-<p>Welcome to <strong>WordForge</strong>, a Microsoft Word-class desktop word processor designed for macOS. This document processor delivers faithful ribbon navigation, continuous multi-page pagination, full styling, table editing, drawing annotations, track changes, mail merge, and native DOCX/PDF export.</p>
+<h1>Seattle Coffee Culture</h1>
+<p>Seattle has long been celebrated as the coffee capital of the Pacific Northwest, blending rich artisan roasting traditions with vibrant community coffeehouses.</p>
 
-<h2>Key Features & Navigation</h2>
-<p>Explore the ribbon tabs above:</p>
-<ul>
-  <li><strong>Home:</strong> Complete typography controls, paragraph formatting, bullet/numbering styles, and styles gallery.</li>
-  <li><strong>Insert:</strong> Tables, images, page breaks, symbols, equations, bookmarks, headers, footers, and footnotes.</li>
-  <li><strong>Draw:</strong> Freehand digital inking with pen, highlighter, custom colors, and stroke widths.</li>
-  <li><strong>Design:</strong> Coordinated themes, color palettes, font pairings, page watermarks, and borders.</li>
-  <li><strong>Layout:</strong> Real page margins, paper size presets (Letter, A4, Legal), orientation, and section breaks.</li>
-  <li><strong>References:</strong> Automatic Table of Contents generator, citations, bibliography, and footnotes.</li>
-  <li><strong>Mailings:</strong> Mail Merge with CSV data sources, preview recipient records, and merge document export.</li>
-  <li><strong>Review:</strong> Offline spelling checker, comments & replies sidebar, and full Track Changes.</li>
-  <li><strong>View:</strong> Print Layout, Web Layout, Focus Mode, Zoom slider, and interactive horizontal/vertical rulers.</li>
-</ul>
+<h2>The Art of the Roast</h2>
+<p>From single-origin pour-overs to masterfully pulled espresso, local roasteries focus on sourcing sustainable beans from ethical agricultural cooperatives worldwide. Each batch is roasted to highlight subtle tasting notes ranging from citrus brilliance to velvet cocoa.</p>
 
-<h2>Sample Data Table</h2>
+<h2>Roast Profile Overview</h2>
 <table>
   <thead>
     <tr>
-      <th>Module</th>
-      <th>Status</th>
-      <th>Standard Support</th>
+      <th>Origin</th>
+      <th>Roast Profile</th>
+      <th>Flavor Notes</th>
+      <th>Elevation</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>OpenXML Engine</td>
-      <td>Active</td>
-      <td>ISO/IEC 29500 (DOCX)</td>
+      <td>Ethiopia Yirgacheffe</td>
+      <td>Light Roast</td>
+      <td>Bergamot, Jasmine, Lemon peel</td>
+      <td>1,950m</td>
     </tr>
     <tr>
-      <td>Pagination Model</td>
-      <td>Active</td>
-      <td>Continuous Multi-Page Flow</td>
+      <td>Colombia Huila</td>
+      <td>Medium Roast</td>
+      <td>Caramel, Red Apple, Milk Chocolate</td>
+      <td>1,700m</td>
     </tr>
     <tr>
-      <td>Review & Markup</td>
-      <td>Active</td>
-      <td>Track Changes & Comments</td>
+      <td>Sumatra Mandheling</td>
+      <td>Dark Roast</td>
+      <td>Cedar, Dark Cocoa, Sweet Tobacco</td>
+      <td>1,400m</td>
     </tr>
   </tbody>
 </table>
 
-<p>Start typing, format your text, or import an existing <code>.docx</code> document from the File menu.</p>
+<p>Every cup represents a balance between culinary craft and community connection, shaping urban daily life across the Pacific Northwest.</p>
 `;
 
 export function createNewDocument(title: string = 'Document 1', templateHtml: string = INITIAL_DOCUMENT_HTML): DocumentState {
@@ -144,7 +137,7 @@ export function createNewDocument(title: string = 'Document 1', templateHtml: st
     activeThemeId: 'office',
     zoomLevel: 100,
     viewMode: 'print',
-    showRuler: true,
+    showRuler: false,
     showNavigationPane: false,
     showCommentsPane: false,
     showTrackChangesPane: false,

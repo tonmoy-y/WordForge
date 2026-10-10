@@ -9,7 +9,7 @@ export interface ReleaseInfo {
   isNewer: boolean;
 }
 
-export const CURRENT_VERSION = '1.1.0';
+export const CURRENT_VERSION = '1.2.0';
 const REPO_OWNER = 'tonmoy-y';
 const REPO_NAME = 'WordForge';
 

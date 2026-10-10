@@ -15,15 +15,15 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({ pageSetup, zoomLev
 
   return (
     <div
-      className="vertical-ruler bg-[#EDEFEF] border-r border-[#CBD5E1] select-none relative shadow-xs shrink-0"
+      className="vertical-ruler bg-[#F8F9FA] border-r border-[#E1DFDD] select-none relative shrink-0"
       style={{
-        width: '18px',
+        width: '16px',
         height: `${pageHeightPx * scale}px`,
       }}
     >
       {/* 1. Top margin shaded area */}
       <div
-        className="w-full bg-[#D8DEE4] absolute top-0 left-0 border-b border-[#94A3B8]"
+        className="w-full bg-[#EDEBE9] absolute top-0 left-0 border-b border-[#D1D1D6]"
         style={{ height: `${marginTopPx * scale}px` }}
       />
 
@@ -47,10 +47,10 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({ pageSetup, zoomLev
           return (
             <div
               key={`vq-${qIdx}`}
-              className="absolute right-0 h-px bg-[#94A3B8]"
+              className="absolute right-0 h-px bg-[#8A8886]"
               style={{
                 top: `${y}px`,
-                width: isHalf ? '5px' : '3px',
+                width: isHalf ? '4px' : '2.5px',
               }}
             />
           );
@@ -68,10 +68,10 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({ pageSetup, zoomLev
               className="absolute left-0 right-0 flex items-center justify-between pointer-events-none"
               style={{ top: `${y}px`, transform: 'translateY(-50%)' }}
             >
-              <span className="text-[8px] font-sans font-semibold text-[#475569] select-none pl-1 leading-none">
+              <span className="text-[8px] font-sans font-normal text-[#605E5C] select-none pl-1 leading-none">
                 {inchNum}
               </span>
-              <div className="h-px w-[6px] bg-[#64748B]" />
+              <div className="h-px w-[4px] bg-[#605E5C]" />
             </div>
           );
         })}
@@ -79,7 +79,7 @@ export const VerticalRuler: React.FC<VerticalRulerProps> = ({ pageSetup, zoomLev
 
       {/* 3. Bottom margin shaded area */}
       <div
-        className="w-full bg-[#D8DEE4] absolute bottom-0 left-0 border-t border-[#94A3B8]"
+        className="w-full bg-[#EDEBE9] absolute bottom-0 left-0 border-t border-[#D1D1D6]"
         style={{ height: `${marginBottomPx * scale}px` }}
       />
     </div>

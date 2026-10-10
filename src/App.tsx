@@ -85,6 +85,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     (window as any).__openUpdateDialog = () => setActiveDialog('update');
     (window as any).__setActiveDialog = (dlg: any) => setActiveDialog(dlg);
+    const params = new URLSearchParams(window.location.search);
+    const dlg = params.get('dialog');
+    if (dlg) setActiveDialog(dlg as any);
   }, []);
 
   // TipTap Editor instance
@@ -383,7 +386,7 @@ export const App: React.FC = () => {
   }, [docState, editor]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#EAECEE] select-none text-slate-800">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F5F6F8] select-none text-[#201F1E]">
       {/* 1. Word for Mac Title Bar */}
       <TitleBar
         docState={docState}

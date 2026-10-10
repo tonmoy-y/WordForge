@@ -59,7 +59,8 @@ export type RibbonTabType =
   | 'Table Layout';
 
 export const Ribbon: React.FC<RibbonProps> = (props) => {
-  const [activeTab, setActiveTab] = useState<RibbonTabType>('Home');
+  const queryTab = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('tab') as RibbonTabType | null) : null;
+  const [activeTab, setActiveTab] = useState<RibbonTabType>(queryTab || 'Home');
 
   const isTableActive = props.editor?.isActive('table') ?? false;
 
@@ -86,9 +87,9 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
   ];
 
   return (
-    <div className="word-ribbon-container bg-white border-b border-[#CBD5E1] shadow-2xs select-none">
+    <div className="word-ribbon-container select-none">
       {/* Ribbon Tab Bar */}
-      <div className="word-ribbon-tabs h-9 flex items-center px-3 bg-[#F1F5F9] border-b border-[#CBD5E1] gap-1">
+      <div className="word-ribbon-tabs">
         {standardTabs.map((tab) => (
           <button
             key={tab}
@@ -100,11 +101,7 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
                 props.setDrawingMode('select');
               }
             }}
-            className={`word-tab-button px-3.5 py-1.5 text-xs font-medium rounded-t transition-all ${
-              activeTab === tab
-                ? 'bg-white text-[#185ABD] font-semibold border-t-2 border-t-[#185ABD] shadow-2xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
-            }`}
+            className={`word-tab-button ${activeTab === tab ? 'active' : ''}`}
           >
             {tab}
           </button>
@@ -112,27 +109,19 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
 
         {/* Contextual Table Tabs when a Table is active */}
         {isTableActive && (
-          <div className="flex items-center gap-0.5 ml-2 pl-2 border-l border-gray-300">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-[#185ABD] mr-1">
+          <div className="flex items-center gap-1 ml-2 pl-2 border-l border-[#D1D1D6]">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-[#0F6CBD] mr-1">
               Table Tools:
             </span>
             <button
               onClick={() => setActiveTab('Table Design')}
-              className={`word-tab-button px-3 py-1.5 text-xs font-semibold rounded-t transition-all ${
-                activeTab === 'Table Design'
-                  ? 'bg-white text-[#185ABD] border-t-2 border-t-[#185ABD] shadow-2xs'
-                  : 'text-[#185ABD] bg-blue-50/60 hover:bg-blue-100/70'
-              }`}
+              className={`word-tab-button ${activeTab === 'Table Design' ? 'active' : ''}`}
             >
               Table Design
             </button>
             <button
               onClick={() => setActiveTab('Table Layout')}
-              className={`word-tab-button px-3 py-1.5 text-xs font-semibold rounded-t transition-all ${
-                activeTab === 'Table Layout'
-                  ? 'bg-white text-[#185ABD] border-t-2 border-t-[#185ABD] shadow-2xs'
-                  : 'text-[#185ABD] bg-blue-50/60 hover:bg-blue-100/70'
-              }`}
+              className={`word-tab-button ${activeTab === 'Table Layout' ? 'active' : ''}`}
             >
               Layout
             </button>
@@ -141,7 +130,7 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
       </div>
 
       {/* Ribbon Active Tab Panel */}
-      <div className="relative min-h-[94px] h-[94px] bg-white">
+      <div className="relative min-h-[92px] h-[92px] bg-[#F9F9FB]">
         {activeTab === 'Home' && (
           <HomeTab
             editor={props.editor}

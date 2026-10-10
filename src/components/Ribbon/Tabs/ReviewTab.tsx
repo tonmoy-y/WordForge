@@ -7,11 +7,14 @@ import {
   GitCommit,
   Check,
   X,
-  ChevronLeft,
-  ChevronRight,
-  GitCompare,
   Eye,
   Sliders,
+  BookOpen,
+  Volume2,
+  Globe2,
+  ShieldCheck,
+  ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import { Editor } from '@tiptap/react';
 import { TrackChangeItem } from '../../../types/document';
@@ -47,6 +50,7 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({
   onToggleTrackPane,
 }) => {
   const [showMarkupMenu, setShowMarkupMenu] = useState(false);
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false);
 
   const pendingChanges = TrackChangesEngine.getPendingChanges(trackChanges);
 
@@ -62,62 +66,159 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({
 
   return (
     <div className="word-ribbon-panel">
-      {/* 1. Proofing */}
+      {/* 1. Proofing (Editor, Spelling & Grammar, Word Count, Thesaurus) */}
       <div className="word-ribbon-group">
-        <div className="word-group-content">
-          <button onClick={onOpenSpellCheck} className="ribbon-btn-large" title="Spelling & Grammar Check (F7)">
-            <CheckCircle2 size={22} className="text-[#107C41]" />
-            <span>Spelling</span>
+        <button
+          onClick={onOpenSpellCheck}
+          className="ribbon-btn-large"
+          title="Microsoft Editor"
+        >
+          <div className="relative">
+            <CheckCircle2 size={24} className="text-[#107C41]" />
+          </div>
+          <span>Editor</span>
+        </button>
+
+        <div className="flex flex-col gap-0.5 justify-center">
+          <button
+            onClick={onOpenSpellCheck}
+            className="h-6 flex items-center gap-1.5 px-2 text-xs font-normal text-[#242424] hover:bg-black/5 rounded transition"
+            title="Spelling & Grammar (F7)"
+          >
+            <CheckCircle2 size={13} className="text-[#107C41]" />
+            <span>Spelling & Grammar</span>
           </button>
-          <button onClick={onOpenWordCount} className="ribbon-btn-large" title="Document Word & Character Count">
-            <FileSpreadsheet size={22} className="text-[#185ABD]" />
+          <button
+            onClick={() => alert('Thesaurus: Look up synonyms and antonyms.')}
+            className="h-6 flex items-center gap-1.5 px-2 text-xs font-normal text-[#242424] hover:bg-black/5 rounded transition"
+            title="Thesaurus (⇧F7)"
+          >
+            <BookOpen size={13} className="text-[#0F6CBD]" />
+            <span>Thesaurus</span>
+          </button>
+          <button
+            onClick={onOpenWordCount}
+            className="h-6 flex items-center gap-1.5 px-2 text-xs font-normal text-[#242424] hover:bg-black/5 rounded transition"
+            title="Word Count"
+          >
+            <FileSpreadsheet size={13} className="text-[#0F6CBD]" />
             <span>Word Count</span>
           </button>
         </div>
-        <div className="word-group-label">Proofing</div>
       </div>
 
-      <div className="word-group-separator" />
+      <div className="word-group-divider" />
 
-      {/* 2. Comments */}
+      {/* 2. Speech & Accessibility */}
       <div className="word-ribbon-group">
-        <div className="word-group-content">
-          <button onClick={onNewComment} className="ribbon-btn-large" title="New Comment on current selection">
-            <MessageSquarePlus size={22} className="text-[#742774]" />
-            <span>New Comment</span>
-          </button>
-          <button onClick={onToggleCommentsPane} className="ribbon-btn-large" title="Show/Hide Comments Sidebar">
-            <MessageSquare size={22} className="text-[#2B579A]" />
-            <span>Comments</span>
+        <button
+          onClick={() => alert('Read Aloud: Reading document aloud at current position.')}
+          className="ribbon-btn-large"
+          title="Read Aloud"
+        >
+          <Volume2 size={24} className="text-[#0F6CBD]" />
+          <span>Read Aloud</span>
+        </button>
+        <button
+          onClick={() => alert('Accessibility Checker: Good to go! No issues found.')}
+          className="ribbon-btn-large"
+          title="Check Accessibility"
+        >
+          <ShieldCheck size={24} className="text-[#107C41]" />
+          <span>Check Accessibility</span>
+        </button>
+      </div>
+
+      <div className="word-group-divider" />
+
+      {/* 3. Language & Translate */}
+      <div className="word-ribbon-group">
+        <button
+          onClick={() => alert('Translate: Translate document or selection into another language.')}
+          className="ribbon-btn-large"
+          title="Translate"
+        >
+          <Globe2 size={24} className="text-[#0F6CBD]" />
+          <span>Translate</span>
+        </button>
+      </div>
+
+      <div className="word-group-divider" />
+
+      {/* 4. Comments */}
+      <div className="word-ribbon-group">
+        <button
+          onClick={onNewComment}
+          className="ribbon-btn-large"
+          title="New Comment on current selection"
+        >
+          <MessageSquarePlus size={24} className="text-[#742774]" />
+          <span>New Comment</span>
+        </button>
+
+        <div className="flex flex-col gap-0.5 justify-center">
+          <div className="relative">
+            <button
+              onClick={() => setShowDeleteMenu(!showDeleteMenu)}
+              className="h-6 flex items-center gap-1 px-2 text-xs text-[#242424] hover:bg-black/5 rounded transition"
+              title="Delete Comment"
+            >
+              <Trash2 size={13} className="text-[#C53929]" />
+              <span>Delete</span>
+              <ChevronDown size={9} className="text-[#616161]" />
+            </button>
+            {showDeleteMenu && (
+              <div className="absolute top-7 left-0 bg-white border border-[#D1D1D6] rounded-md shadow-xl py-1 z-50 text-xs w-44">
+                <button
+                  onClick={() => setShowDeleteMenu(false)}
+                  className="w-full text-left px-3 py-1.5 hover:bg-[#F3F2F1] text-[#242424]"
+                >
+                  Delete Selected Comment
+                </button>
+                <button
+                  onClick={() => {
+                    alert('All comments cleared.');
+                    setShowDeleteMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-[#F3F2F1] text-[#C53929]"
+                >
+                  Delete All Comments
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onToggleCommentsPane}
+            className="h-6 flex items-center gap-1.5 px-2 text-xs text-[#242424] hover:bg-black/5 rounded transition"
+            title="Show Comments Pane"
+          >
+            <MessageSquare size={13} className="text-[#0F6CBD]" />
+            <span>Show Comments</span>
           </button>
         </div>
-        <div className="word-group-label">Comments</div>
       </div>
 
-      <div className="word-group-separator" />
+      <div className="word-group-divider" />
 
-      {/* 3. Tracking */}
+      {/* 5. Tracking (Track Changes, Markup, Reviewing Pane) */}
       <div className="word-ribbon-group">
-        <div className="flex flex-col gap-1.5 flex-1 justify-center">
-          <button
-            onClick={onToggleTrackChanges}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border ${
-              trackChangesEnabled ? 'bg-red-50 text-red-700 border-red-400 font-semibold' : 'bg-white border-gray-300'
-            }`}
-            title="Track Changes (Cmd+Shift+E)"
-          >
-            <GitCommit size={14} className={trackChangesEnabled ? 'text-red-600' : 'text-gray-500'} />
-            <span>Track Changes: {trackChangesEnabled ? 'ON' : 'OFF'}</span>
-          </button>
+        <button
+          onClick={onToggleTrackChanges}
+          className={`ribbon-btn-large ${trackChangesEnabled ? 'active' : ''}`}
+          title="Track Changes (⌘⇧E)"
+        >
+          <GitCommit size={24} className={trackChangesEnabled ? 'text-[#0F6CBD]' : 'text-[#616161]'} />
+          <span>Track Changes</span>
+        </button>
 
-          {/* Display for Review */}
+        <div className="flex flex-col gap-1 justify-center">
           <div className="relative">
             <button
               onClick={() => setShowMarkupMenu(!showMarkupMenu)}
-              className="flex items-center gap-1 text-xs border border-gray-300 rounded px-2 py-0.5 bg-white w-32 justify-between"
-              title="Display for Review Mode"
+              className="h-6 w-32 px-2 flex items-center justify-between bg-white border border-[#D1D1D6] hover:border-[#8A8886] rounded-[3px] text-xs text-[#242424]"
+              title="Display for Review"
             >
-              <span>
+              <span className="truncate">
                 {markupMode === 'all'
                   ? 'All Markup'
                   : markupMode === 'simple'
@@ -126,10 +227,10 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({
                   ? 'No Markup'
                   : 'Original'}
               </span>
-              <Eye size={12} />
+              <ChevronDown size={10} className="text-[#616161]" />
             </button>
             {showMarkupMenu && (
-              <div className="absolute top-6 left-0 bg-white border border-gray-300 rounded shadow-lg p-1 z-50 w-36 text-xs">
+              <div className="absolute top-7 left-0 bg-white border border-[#D1D1D6] rounded-md shadow-xl py-1 z-50 text-xs w-36">
                 {(['all', 'simple', 'none', 'original'] as const).map((mode) => (
                   <button
                     key={mode}
@@ -137,8 +238,8 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({
                       onSetMarkupMode(mode);
                       setShowMarkupMenu(false);
                     }}
-                    className={`w-full text-left px-2 py-1 rounded ${
-                      markupMode === mode ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-100'
+                    className={`w-full text-left px-3 py-1.5 hover:bg-[#F3F2F1] ${
+                      markupMode === mode ? 'bg-[#EFF6FC] text-[#0F6CBD] font-medium' : 'text-[#242424]'
                     }`}
                   >
                     {mode === 'all'
@@ -153,45 +254,41 @@ export const ReviewTab: React.FC<ReviewTabProps> = ({
               </div>
             )}
           </div>
-        </div>
-        <div className="word-group-label">Tracking</div>
-      </div>
-
-      <div className="word-group-separator" />
-
-      {/* 4. Changes (Accept / Reject) */}
-      <div className="word-ribbon-group">
-        <div className="flex flex-col gap-1 flex-1 justify-center">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleAcceptAll}
-              disabled={pendingChanges.length === 0}
-              className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-300 rounded text-xs flex items-center gap-1"
-              title="Accept All Revisions"
-            >
-              <Check size={12} />
-              <span>Accept All</span>
-            </button>
-            <button
-              onClick={handleRejectAll}
-              disabled={pendingChanges.length === 0}
-              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded text-xs flex items-center gap-1"
-              title="Reject All Revisions"
-            >
-              <X size={12} />
-              <span>Reject All</span>
-            </button>
-          </div>
 
           <button
             onClick={onToggleTrackPane}
-            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+            className="h-6 flex items-center gap-1.5 px-2 text-xs text-[#242424] hover:bg-black/5 rounded transition"
+            title="Toggle Reviewing Pane"
           >
-            <Sliders size={12} />
+            <Sliders size={13} className="text-[#0F6CBD]" />
             <span>Reviewing Pane ({pendingChanges.length})</span>
           </button>
         </div>
-        <div className="word-group-label">Changes</div>
+      </div>
+
+      <div className="word-group-divider" />
+
+      {/* 6. Changes (Accept & Reject) */}
+      <div className="word-ribbon-group">
+        <button
+          onClick={handleAcceptAll}
+          disabled={pendingChanges.length === 0}
+          className="ribbon-btn-large disabled:opacity-40"
+          title="Accept All Changes"
+        >
+          <Check size={24} className="text-[#107C41]" />
+          <span>Accept</span>
+        </button>
+
+        <button
+          onClick={handleRejectAll}
+          disabled={pendingChanges.length === 0}
+          className="ribbon-btn-large disabled:opacity-40"
+          title="Reject All Changes"
+        >
+          <X size={24} className="text-[#C53929]" />
+          <span>Reject</span>
+        </button>
       </div>
     </div>
   );

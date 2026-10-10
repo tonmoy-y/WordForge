@@ -73,7 +73,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   const totalPageCount = pages.length;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#EAECEE]">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#EDEDED]">
       {/* 1. Horizontal Ruler Bar */}
       {showRuler && viewMode === 'print' && (
         <div className="w-full z-20 shrink-0">
@@ -99,7 +99,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         ref={canvasViewportRef}
         onScroll={handleScroll}
         className={`word-canvas-viewport flex-1 overflow-auto relative ${
-          viewMode === 'focus' ? 'bg-[#0F172A]' : 'bg-[#EAECEE]'
+          viewMode === 'focus' ? 'bg-[#0F172A]' : 'bg-[#EDEDED]'
         }`}
       >
         <div className="flex justify-center p-6 min-h-full">
@@ -126,8 +126,8 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                   width: `${pageDimensions.pageWidthPx}px`,
                   minHeight: `${pageDimensions.pageHeightPx}px`,
                   backgroundColor: pageSetup.pageColor || '#FFFFFF',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)',
-                  border: pageSetup.showPageBorders ? '2px solid #185ABD' : '1px solid #D5DAE0',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+                  border: pageSetup.showPageBorders ? '2px solid #0F6CBD' : '1px solid rgba(0, 0, 0, 0.08)',
                   paddingLeft: `${pageDimensions.marginLeftPx}px`,
                   paddingRight: `${pageDimensions.marginRightPx}px`,
                   paddingTop: `${pageDimensions.marginTopPx}px`,

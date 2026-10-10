@@ -14,27 +14,30 @@ console.log(`============================================================\n`);
 const dmgPath = path.join(releaseDir, `WordForge-${version}-arm64.dmg`);
 const zipPath = path.join(releaseDir, `WordForge-${version}-arm64-mac.zip`);
 
-if (!fs.existsSync(dmgPath) || !fs.existsSync(zipPath)) {
-  console.log(`[1/3] Release binaries not found for v${version}. Building now...`);
+const forceBuild = process.argv.includes('--force') || process.argv.includes('-f') || !fs.existsSync(dmgPath) || !fs.existsSync(zipPath);
+
+if (forceBuild) {
+  console.log(`[1/3] Building release binaries for ${tagName}...`);
   execSync('npm run electron:build', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
 } else {
-  console.log(`[1/3] Found existing binaries for v${version}:`);
+  console.log(`[1/3] Found existing binaries for ${tagName}:`);
   console.log(`  - ${dmgPath} (${(fs.statSync(dmgPath).size / 1024 / 1024).toFixed(1)} MB)`);
   console.log(`  - ${zipPath} (${(fs.statSync(zipPath).size / 1024 / 1024).toFixed(1)} MB)`);
 }
 
 const releaseNotes = `## WordForge ${tagName} - Microsoft Word for Mac High-Fidelity Architecture
 
-WordForge ${tagName} delivers a ground-up rebuilt desktop word processor architecture meticulously reverse-engineered to mirror Microsoft Word for Mac in appearance, typography, layout engine, and editing functionality.
+WordForge ${tagName} delivers an uncompromising, ultra-high-fidelity desktop word processor architecture reverse-engineered to mirror Microsoft Word for Mac in appearance, typography, layout engine, and editing functionality.
 
 ### Key Highlights & Features
-- **Authentic macOS Title Bar**: Unified Word Blue (#185ABD) header with native traffic light clearance, Quick Access Toolbar (Save, Undo, Redo, Print), AutoSave toggle, document title rename dropdown, and Search capsule.
-- **Complete 10-Tab Ribbon**: Home, Insert, Draw, Design, Layout, References, Mailings, Review, View, Help with authentic group organization, separators, and dialog launchers.
-- **Contextual Table Tools**: Automatic table detection revealing \`Table Design\` (Table Styles, Shading, Borders) and \`Table Layout\` (Insert/Delete rows & columns, merge/split cells, 9-cell alignment).
-- **Interactive Controls**: 10×8 hover Table Grid Picker and complete Microsoft Office Theme Color matrix (10 columns × 5 tint/shade gradations).
-- **Document Pagination & Layout**: Centered 8.5" × 11" Letter page sheets with drop shadows, page break canvas boundaries, synchronous horizontal/vertical rulers with exact inch ticks and margin shading.
+- **Authentic macOS Window Chrome**: Unified macOS header (#F5F6F8) seamlessly blending native traffic light clearance, AutoSave toggle, Quick Access Toolbar, document title dropdown rename, Search capsule, and Word Blue Share button.
+- **Genuine Word for Mac Ribbon Tabs**: Home, Insert, Draw, Design, Layout, References, Mailings, Review, View, Help with authentic Word Blue underline indicators and clean 1px vertical group dividers.
+- **Office Typography & Custom Pickers**: Custom dropdowns for Aptos, Aptos Display, Calibri, and exact point sizes, with case change, superscript/subscript, and text effects.
+- **Authentic Styles Gallery**: Real-time styled tiles for Normal, No Spacing, Heading 1, Heading 2, Title, Subtitle, and Quote with steppers and Styles pane integration.
+- **Contextual Table Tools**: Automatic table detection revealing Table Design (styles, shading, borders) and Table Layout (rows, columns, cell alignment).
+- **Document Pagination & Layout**: Centered 8.5" × 11" Letter page sheets with realistic drop shadows, margin boundaries, and synchronous rulers.
 - **OpenXML Interoperability**: 100% offline DOCX import/export, PDF rendering, Track Changes, Comments sidebar, Mail Merge, and offline spellcheck.
-- **Seamless macOS Execution**: Deep ad-hoc code-signed binary to eliminate macOS Gatekeeper damaged application warnings.
+- **In-App Updater & Automation**: 1-click update checks, version comparisons, release note previews, and automated GitHub Release publishing.
 
 ### Download Binaries (Apple Silicon / macOS)
 - **macOS DMG Installer**: [WordForge-${version}-arm64.dmg](https://github.com/tonmoy-y/WordForge/releases/download/${tagName}/WordForge-${version}-arm64.dmg)
