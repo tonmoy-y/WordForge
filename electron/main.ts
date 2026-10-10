@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, MenuItemConstructorOptions, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, Menu, MenuItemConstructorOptions, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -51,7 +51,10 @@ function setupMenu(): void {
           {
             label: 'WordForge',
             submenu: [
-              { role: 'about' as const, label: 'About WordForge Pro' },
+              { label: 'About WordForge', click: () => mainWindow?.webContents.send('menu:about') },
+              { label: 'Check for Updates…', click: () => mainWindow?.webContents.send('menu:checkUpdates') },
+              { type: 'separator' as const },
+              { label: 'Preferences…', accelerator: 'CmdOrCtrl+,', click: () => mainWindow?.webContents.send('menu:preferences') },
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
@@ -89,20 +92,54 @@ function setupMenu(): void {
         { role: 'copy' as const },
         { role: 'paste' as const },
         { role: 'selectAll' as const },
+        { type: 'separator' as const },
+        { label: 'Find…', accelerator: 'CmdOrCtrl+F', click: () => mainWindow?.webContents.send('menu:find') },
+        { label: 'Replace…', accelerator: 'Alt+CmdOrCtrl+F', click: () => mainWindow?.webContents.send('menu:replace') },
       ],
     },
     {
       label: 'View',
       submenu: [
-        { role: 'reload' as const },
-        { role: 'forceReload' as const },
-        { role: 'toggleDevTools' as const },
+        { label: 'Print Layout', click: () => mainWindow?.webContents.send('menu:viewPrint') },
+        { label: 'Web Layout', click: () => mainWindow?.webContents.send('menu:viewWeb') },
+        { label: 'Read Mode', click: () => mainWindow?.webContents.send('menu:viewRead') },
+        { label: 'Focus Mode', click: () => mainWindow?.webContents.send('menu:viewFocus') },
+        { type: 'separator' as const },
+        { label: 'Ruler', click: () => mainWindow?.webContents.send('menu:toggleRuler') },
+        { label: 'Navigation Pane', click: () => mainWindow?.webContents.send('menu:toggleNavPane') },
         { type: 'separator' as const },
         { role: 'resetZoom' as const },
         { role: 'zoomIn' as const },
         { role: 'zoomOut' as const },
         { type: 'separator' as const },
         { role: 'togglefullscreen' as const },
+      ],
+    },
+    {
+      label: 'Insert',
+      submenu: [
+        { label: 'Page Break', accelerator: 'CmdOrCtrl+Enter', click: () => mainWindow?.webContents.send('menu:insertPageBreak') },
+        { label: 'Table…', click: () => mainWindow?.webContents.send('menu:insertTable') },
+        { label: 'Picture…', click: () => mainWindow?.webContents.send('menu:insertImage') },
+        { label: 'Hyperlink…', accelerator: 'CmdOrCtrl+K', click: () => mainWindow?.webContents.send('menu:insertLink') },
+        { label: 'Symbol…', click: () => mainWindow?.webContents.send('menu:insertSymbol') },
+        { label: 'Equation…', accelerator: 'Alt+CmdOrCtrl+=', click: () => mainWindow?.webContents.send('menu:insertEquation') },
+      ],
+    },
+    {
+      label: 'Format',
+      submenu: [
+        { label: 'Font…', accelerator: 'CmdOrCtrl+D', click: () => mainWindow?.webContents.send('menu:fontDialog') },
+        { label: 'Paragraph…', click: () => mainWindow?.webContents.send('menu:paragraphDialog') },
+      ],
+    },
+    {
+      label: 'Tools',
+      submenu: [
+        { label: 'Spelling & Grammar', accelerator: 'F7', click: () => mainWindow?.webContents.send('menu:spellCheck') },
+        { label: 'Word Count…', click: () => mainWindow?.webContents.send('menu:wordCount') },
+        { type: 'separator' as const },
+        { label: 'Track Changes', accelerator: 'Shift+CmdOrCtrl+E', click: () => mainWindow?.webContents.send('menu:trackChanges') },
       ],
     },
     {
@@ -117,14 +154,22 @@ function setupMenu(): void {
       label: 'Help',
       submenu: [
         {
-          label: 'DocCraft Documentation',
-          click: () => {
-            dialog.showMessageBox({
-              type: 'info',
-              title: 'DocCraft Help',
-              message: 'DocCraft Pro Desktop Word Processor\nOffline documentation is bundled with the application.',
-            });
-          },
+          label: 'WordForge Help',
+          click: () => mainWindow?.webContents.send('menu:shortcuts'),
+        },
+        {
+          label: 'Keyboard Shortcuts',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => mainWindow?.webContents.send('menu:shortcuts'),
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Check for Updates…',
+          click: () => mainWindow?.webContents.send('menu:checkUpdates'),
+        },
+        {
+          label: 'About WordForge Pro',
+          click: () => mainWindow?.webContents.send('menu:about'),
         },
       ],
     },
@@ -151,7 +196,7 @@ ipcMain.handle('dialog:openFile', async (_, options) => {
   if (!mainWindow) return { success: false };
   const res = await dialog.showOpenDialog(mainWindow, {
     filters: options?.filters || [
-      { name: 'Word Documents', extensions: ['docx', 'doccraft', 'txt', 'html'] },
+      { name: 'Word Documents', extensions: ['docx', 'wordforge', 'txt', 'html'] },
     ],
     properties: ['openFile'],
   });
@@ -179,6 +224,14 @@ ipcMain.handle('action:printToPdf', async (_, options) => {
   } catch (e) {
     return { success: false };
   }
+});
+
+ipcMain.handle('shell:openExternal', async (_, url: string) => {
+  if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
 });
 
 app.whenReady().then(createWindow);

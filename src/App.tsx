@@ -26,7 +26,6 @@ import { exportToPdf } from './core/pdf/pdfExporter';
 import { TrackChangesEngine } from './core/review/trackChangesEngine';
 
 import { TitleBar } from './components/TitleBar';
-import { MenuBar } from './components/MenuBar';
 import { Ribbon } from './components/Ribbon/Ribbon';
 import { DocumentCanvas } from './components/Editor/DocumentCanvas';
 import { StatusBar } from './components/StatusBar';
@@ -85,6 +84,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     (window as any).__openUpdateDialog = () => setActiveDialog('update');
+    (window as any).__setActiveDialog = (dlg: any) => setActiveDialog(dlg);
   }, []);
 
   // TipTap Editor instance
@@ -344,9 +344,47 @@ export const App: React.FC = () => {
     });
   };
 
+  // Native macOS Menu Action Listener via IPC
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (api && api.onMenuAction) {
+      api.onMenuAction((action: string) => {
+        switch (action) {
+          case 'menu:new': handleNew(); break;
+          case 'menu:open': handleOpen(); break;
+          case 'menu:save': handleSave(); break;
+          case 'menu:saveAs': handleSaveAs(); break;
+          case 'menu:print': handlePrint(); break;
+          case 'menu:pageSetup': setActiveDialog('pagesetup'); break;
+          case 'menu:find': setActiveDialog('find'); break;
+          case 'menu:replace': setActiveDialog('replace'); break;
+          case 'menu:viewPrint': updateDocState({ viewMode: 'print' }); break;
+          case 'menu:viewWeb': updateDocState({ viewMode: 'web' }); break;
+          case 'menu:viewRead': updateDocState({ viewMode: 'read' }); break;
+          case 'menu:viewFocus': updateDocState({ viewMode: 'focus' }); break;
+          case 'menu:toggleRuler': updateDocState({ showRuler: !docState.showRuler }); break;
+          case 'menu:toggleNavPane': updateDocState({ showNavigationPane: !docState.showNavigationPane }); break;
+          case 'menu:insertPageBreak': editor?.chain().focus().insertContent('<div class="page-break" data-page-break="true"><hr></div>').run(); break;
+          case 'menu:insertTable': setActiveDialog('table'); break;
+          case 'menu:insertSymbol': setActiveDialog('symbol'); break;
+          case 'menu:insertEquation': setActiveDialog('equation'); break;
+          case 'menu:fontDialog': setActiveDialog('font'); break;
+          case 'menu:paragraphDialog': setActiveDialog('paragraph'); break;
+          case 'menu:spellCheck': setActiveDialog('spellcheck'); break;
+          case 'menu:wordCount': setActiveDialog('wordcount'); break;
+          case 'menu:trackChanges': updateDocState({ trackChangesEnabled: !docState.trackChangesEnabled }); break;
+          case 'menu:shortcuts': setActiveDialog('shortcuts'); break;
+          case 'menu:checkUpdates': setActiveDialog('update'); break;
+          case 'menu:about': setActiveDialog('about'); break;
+          case 'menu:preferences': setActiveDialog('preferences'); break;
+        }
+      });
+    }
+  }, [docState, editor]);
+
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F3F4F6]">
-      {/* 1. Title Bar */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#EAECEE] select-none text-slate-800">
+      {/* 1. Word for Mac Title Bar */}
       <TitleBar
         docState={docState}
         onSave={handleSave}
@@ -355,61 +393,13 @@ export const App: React.FC = () => {
         onPrint={handlePrint}
         onOpen={handleOpen}
         onSearchOpen={() => setActiveDialog('find')}
+        onToggleComments={() => updateDocState({ showCommentsPane: !docState.showCommentsPane })}
+        onRenameDocument={(newTitle) => updateDocState({ title: newTitle, isDirty: true })}
         canUndo={editor?.can().undo() || false}
         canRedo={editor?.can().redo() || false}
       />
 
-      {/* 2. Top Application Menu Bar */}
-      <MenuBar
-        onNew={handleNew}
-        onOpen={handleOpen}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onExportDocx={handleExportDocx}
-        onExportPdf={handleExportPdf}
-        onPrint={handlePrint}
-        onPageSetup={() => setActiveDialog('pagesetup')}
-        onDocProps={() => setActiveDialog('docprops')}
-        onPreferences={() => setActiveDialog('preferences')}
-        onUndo={() => editor?.chain().focus().undo().run()}
-        onRedo={() => editor?.chain().focus().redo().run()}
-        onFind={() => setActiveDialog('find')}
-        onReplace={() => setActiveDialog('replace')}
-        onSelectAll={() => editor?.chain().focus().selectAll().run()}
-        onInsertTable={() => setActiveDialog('table')}
-        onInsertImage={() => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = 'image/*';
-          input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (re) => {
-                editor?.chain().focus().setImage({ src: re.target?.result as string }).run();
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-          input.click();
-        }}
-        onInsertPageBreak={() => {
-          editor?.chain().focus().insertContent('<div class="page-break" data-page-break="true"><hr></div>').run();
-        }}
-        onInsertSymbol={() => setActiveDialog('symbol')}
-        onInsertEquation={() => setActiveDialog('equation')}
-        onFontDialog={() => setActiveDialog('font')}
-        onParagraphDialog={() => setActiveDialog('paragraph')}
-        onWordCount={() => setActiveDialog('wordcount')}
-        onSpellCheck={() => setActiveDialog('spellcheck')}
-        onToggleTrackChanges={() => updateDocState({ trackChangesEnabled: !docState.trackChangesEnabled })}
-        onToggleRuler={() => updateDocState({ showRuler: !docState.showRuler })}
-        onToggleNavPane={() => updateDocState({ showNavigationPane: !docState.showNavigationPane })}
-        onAbout={() => setActiveDialog('about')}
-        onCheckUpdates={() => setActiveDialog('update')}
-      />
-
-      {/* 3. Word Ribbon */}
+      {/* 2. Word Ribbon */}
       <Ribbon
         editor={editor}
         docState={docState}

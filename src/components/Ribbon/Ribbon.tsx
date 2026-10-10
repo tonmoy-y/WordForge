@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { HomeTab } from './Tabs/HomeTab';
 import { InsertTab } from './Tabs/InsertTab';
@@ -10,7 +10,9 @@ import { MailingsTab } from './Tabs/MailingsTab';
 import { ReviewTab } from './Tabs/ReviewTab';
 import { ViewTab } from './Tabs/ViewTab';
 import { HelpTab } from './Tabs/HelpTab';
-import { DocumentState, PageSetup, MailMergeState, TrackChangeItem } from '../../types/document';
+import { TableDesignTab } from './Tabs/TableDesignTab';
+import { TableLayoutTab } from './Tabs/TableLayoutTab';
+import { DocumentState } from '../../types/document';
 
 interface RibbonProps {
   editor: Editor | null;
@@ -42,14 +44,35 @@ interface RibbonProps {
   onNewComment: () => void;
 }
 
-export const Ribbon: React.FC<RibbonProps> = (props) => {
-  const [activeTab, setActiveTab] = useState<
-    'Home' | 'Insert' | 'Draw' | 'Design' | 'Layout' | 'References' | 'Mailings' | 'Review' | 'View' | 'Help'
-  >('Home');
+export type RibbonTabType =
+  | 'Home'
+  | 'Insert'
+  | 'Draw'
+  | 'Design'
+  | 'Layout'
+  | 'References'
+  | 'Mailings'
+  | 'Review'
+  | 'View'
+  | 'Help'
+  | 'Table Design'
+  | 'Table Layout';
 
-  const tabs: Array<
-    'Home' | 'Insert' | 'Draw' | 'Design' | 'Layout' | 'References' | 'Mailings' | 'Review' | 'View' | 'Help'
-  > = [
+export const Ribbon: React.FC<RibbonProps> = (props) => {
+  const [activeTab, setActiveTab] = useState<RibbonTabType>('Home');
+
+  const isTableActive = props.editor?.isActive('table') ?? false;
+
+  // If table is newly activated and we are not in table tabs, we can optionally switch
+  useEffect(() => {
+    if (isTableActive && (activeTab === 'Table Design' || activeTab === 'Table Layout')) {
+      // remain in table tab
+    } else if (!isTableActive && (activeTab === 'Table Design' || activeTab === 'Table Layout')) {
+      setActiveTab('Home');
+    }
+  }, [isTableActive]);
+
+  const standardTabs: RibbonTabType[] = [
     'Home',
     'Insert',
     'Draw',
@@ -63,30 +86,62 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
   ];
 
   return (
-    <div className="word-ribbon-container">
+    <div className="word-ribbon-container bg-white border-b border-[#CBD5E1] shadow-2xs select-none">
       {/* Ribbon Tab Bar */}
-      <div className="word-ribbon-tabs">
-        {tabs.map((tab) => (
+      <div className="word-ribbon-tabs h-9 flex items-center px-3 bg-[#F1F5F9] border-b border-[#CBD5E1] gap-1">
+        {standardTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => {
               setActiveTab(tab);
-              // If entering Draw tab, switch to pen automatically if currently select
               if (tab === 'Draw' && props.drawingMode === 'select') {
                 props.setDrawingMode('pen');
               } else if (tab !== 'Draw' && props.drawingMode !== 'select') {
                 props.setDrawingMode('select');
               }
             }}
-            className={`word-tab-button ${activeTab === tab ? 'active' : ''}`}
+            className={`word-tab-button px-3.5 py-1.5 text-xs font-medium rounded-t transition-all ${
+              activeTab === tab
+                ? 'bg-white text-[#185ABD] font-semibold border-t-2 border-t-[#185ABD] shadow-2xs'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+            }`}
           >
             {tab}
           </button>
         ))}
+
+        {/* Contextual Table Tabs when a Table is active */}
+        {isTableActive && (
+          <div className="flex items-center gap-0.5 ml-2 pl-2 border-l border-gray-300">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-[#185ABD] mr-1">
+              Table Tools:
+            </span>
+            <button
+              onClick={() => setActiveTab('Table Design')}
+              className={`word-tab-button px-3 py-1.5 text-xs font-semibold rounded-t transition-all ${
+                activeTab === 'Table Design'
+                  ? 'bg-white text-[#185ABD] border-t-2 border-t-[#185ABD] shadow-2xs'
+                  : 'text-[#185ABD] bg-blue-50/60 hover:bg-blue-100/70'
+              }`}
+            >
+              Table Design
+            </button>
+            <button
+              onClick={() => setActiveTab('Table Layout')}
+              className={`word-tab-button px-3 py-1.5 text-xs font-semibold rounded-t transition-all ${
+                activeTab === 'Table Layout'
+                  ? 'bg-white text-[#185ABD] border-t-2 border-t-[#185ABD] shadow-2xs'
+                  : 'text-[#185ABD] bg-blue-50/60 hover:bg-blue-100/70'
+              }`}
+            >
+              Layout
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Ribbon Active Tab Panel */}
-      <div className="relative">
+      <div className="relative min-h-[94px] h-[94px] bg-white">
         {activeTab === 'Home' && (
           <HomeTab
             editor={props.editor}
@@ -102,6 +157,7 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
             onOpenTableDialog={props.onOpenTableDialog}
             onOpenSymbolDialog={props.onOpenSymbolDialog}
             onOpenEquationDialog={props.onOpenEquationDialog}
+            onNewComment={props.onNewComment}
           />
         )}
         {activeTab === 'Draw' && (
@@ -118,28 +174,34 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
         {activeTab === 'Design' && (
           <DesignTab
             activeThemeId={props.docState.activeThemeId}
-            onSelectTheme={(themeId) => props.onUpdateDocState({ activeThemeId: themeId })}
+            onSelectTheme={(themeId) => {
+              props.onUpdateDocState({ activeThemeId: themeId, isDirty: true });
+            }}
             pageSetup={props.docState.pageSetup}
-            onUpdatePageSetup={(updates) =>
+            onUpdatePageSetup={(updates) => {
               props.onUpdateDocState({
                 pageSetup: { ...props.docState.pageSetup, ...updates },
                 isDirty: true,
-              })
-            }
+              });
+            }}
           />
         )}
         {activeTab === 'Layout' && (
           <LayoutTab
             pageSetup={props.docState.pageSetup}
-            onUpdatePageSetup={(updates) =>
+            onUpdatePageSetup={(updates) => {
               props.onUpdateDocState({
                 pageSetup: { ...props.docState.pageSetup, ...updates },
                 isDirty: true,
-              })
-            }
+              });
+            }}
             onOpenPageSetupDialog={props.onOpenPageSetupDialog}
-            onInsertBreak={(type) => {
-              props.editor?.chain().focus().insertContent('<div class="page-break" data-page-break="true"><hr></div>').run();
+            onInsertBreak={() => {
+              props.editor
+                ?.chain()
+                .focus()
+                .insertContent('<div class="page-break" data-page-break="true"><hr></div>')
+                .run();
             }}
           />
         )}
@@ -148,63 +210,67 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
             editor={props.editor}
             citations={props.docState.citations}
             onInsertToc={() => {
-              // Generate automatic table of contents
+              // Generate TOC from headings
               const headings = Array.from(document.querySelectorAll('.ProseMirror h1, .ProseMirror h2, .ProseMirror h3'));
-              let tocHtml = '<div class="toc-container" style="background:#F8FAFC; border:1px solid #CBD5E1; padding:12px; margin:16px 0; border-radius:4px;"><h3 style="margin-top:0; color:#1F4E79;">Table of Contents</h3><ul style="list-style:none; padding-left:0;">';
-              headings.forEach((h, idx) => {
-                const tag = h.tagName.toLowerCase();
-                const text = h.textContent || '';
-                const indent = tag === 'h1' ? '0' : tag === 'h2' ? '16px' : '32px';
-                tocHtml += `<li style="padding-left: ${indent}; margin: 4px 0;"><a href="#" style="text-decoration:none; color:#185ABD; display:flex; justify-content:space-between;"><span>${text}</span><span style="color:#888;">${idx + 1}</span></a></li>`;
+              let tocHtml = '<div class="table-of-contents" style="background:#F8FAFC; border:1px solid #CBD5E1; padding:16px; margin:16px 0; border-radius:4px;"><h3 style="margin-top:0; color:#1F4E79;">Table of Contents</h3><ul style="list-style:none; padding-left:0;">';
+              headings.forEach((h, i) => {
+                const text = h.textContent || `Section ${i + 1}`;
+                const level = h.tagName.toLowerCase();
+                const pad = level === 'h1' ? '0' : level === 'h2' ? '16px' : '32px';
+                tocHtml += `<li style="padding-left:${pad}; margin:4px 0;"><a href="#" style="color:#185ABD; text-decoration:none;">${text} ........................................ Page 1</a></li>`;
               });
-              tocHtml += '</ul></div>';
+              tocHtml += '</ul></div><p></p>';
               props.editor?.chain().focus().insertContent(tocHtml).run();
             }}
-            onUpdateToc={() => {
-              alert('Table of Contents updated with current document headings.');
-            }}
-            onManageCitations={() => {
-              alert('Citations Manager: ' + props.docState.citations.map((c) => c.title).join(', '));
-            }}
+            onUpdateToc={() => {}}
+            onManageCitations={() => {}}
           />
         )}
         {activeTab === 'Mailings' && (
           <MailingsTab
             editor={props.editor}
             mailMerge={props.docState.mailMerge}
-            onUpdateMailMerge={(updates) =>
+            onUpdateMailMerge={(updates) => {
               props.onUpdateDocState({
                 mailMerge: { ...props.docState.mailMerge, ...updates },
-              })
-            }
-            onOpenMailMergeDialog={props.onOpenMailMergeDialog}
-            onFinishAndMerge={() => {
-              props.onOpenMailMergeDialog();
+                isDirty: true,
+              });
             }}
+            onOpenMailMergeDialog={props.onOpenMailMergeDialog}
+            onFinishAndMerge={props.onOpenMailMergeDialog}
           />
         )}
         {activeTab === 'Review' && (
           <ReviewTab
             editor={props.editor}
             trackChangesEnabled={props.docState.trackChangesEnabled}
-            onToggleTrackChanges={() =>
+            onToggleTrackChanges={() => {
               props.onUpdateDocState({
                 trackChangesEnabled: !props.docState.trackChangesEnabled,
-              })
-            }
+                isDirty: true,
+              });
+            }}
             markupMode={props.docState.markupDisplayMode}
-            onSetMarkupMode={(mode) => props.onUpdateDocState({ markupDisplayMode: mode })}
+            onSetMarkupMode={(mode) => {
+              props.onUpdateDocState({ markupDisplayMode: mode });
+            }}
             trackChanges={props.docState.trackChanges}
-            onUpdateTrackChanges={(changes) => props.onUpdateDocState({ trackChanges: changes })}
+            onUpdateTrackChanges={(changes) => {
+              props.onUpdateDocState({ trackChanges: changes, isDirty: true });
+            }}
             onOpenSpellCheck={props.onOpenSpellCheck}
             onOpenWordCount={props.onOpenWordCount}
             onNewComment={props.onNewComment}
-            onToggleCommentsPane={() =>
-              props.onUpdateDocState({ showCommentsPane: !props.docState.showCommentsPane })
-            }
-            onToggleTrackPane={() =>
-              props.onUpdateDocState({ showTrackChangesPane: !props.docState.showTrackChangesPane })
-            }
+            onToggleCommentsPane={() => {
+              props.onUpdateDocState({
+                showCommentsPane: !props.docState.showCommentsPane,
+              });
+            }}
+            onToggleTrackPane={() => {
+              props.onUpdateDocState({
+                showTrackChangesPane: !props.docState.showTrackChangesPane,
+              });
+            }}
           />
         )}
         {activeTab === 'View' && (
@@ -228,6 +294,8 @@ export const Ribbon: React.FC<RibbonProps> = (props) => {
             onCheckUpdates={props.onCheckUpdates}
           />
         )}
+        {activeTab === 'Table Design' && <TableDesignTab editor={props.editor} />}
+        {activeTab === 'Table Layout' && <TableLayoutTab editor={props.editor} />}
       </div>
     </div>
   );

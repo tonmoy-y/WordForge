@@ -118,25 +118,47 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({ onClose }) => {
           )}
         </div>
 
-        <div className="word-dialog-footer">
+        <div className="word-dialog-footer flex items-center justify-between">
           <button onClick={fetchUpdate} disabled={loading} className="btn-secondary flex items-center gap-1.5">
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
             <span>Check Again</span>
           </button>
-          {release?.isNewer || release?.dmgDownloadUrl ? (
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="btn-primary flex items-center gap-1.5"
-            >
-              <Download size={14} />
-              <span>Download & Install Update</span>
+          
+          <div className="flex items-center gap-2">
+            {release?.dmgDownloadUrl && (
+              <button
+                onClick={() => {
+                  setDownloading(true);
+                  UpdateService.downloadUpdate(release.dmgDownloadUrl!, `WordForge-${release.version}-arm64.dmg`);
+                  setTimeout(() => setDownloading(false), 2000);
+                }}
+                disabled={downloading}
+                className="btn-primary flex items-center gap-1.5 bg-[#185ABD] hover:bg-[#103F91] text-white"
+                title="Download macOS DMG Installer"
+              >
+                <Download size={13} />
+                <span>Download DMG</span>
+              </button>
+            )}
+            {release?.zipDownloadUrl && (
+              <button
+                onClick={() => {
+                  setDownloading(true);
+                  UpdateService.downloadUpdate(release.zipDownloadUrl!, `WordForge-${release.version}-arm64-mac.zip`);
+                  setTimeout(() => setDownloading(false), 2000);
+                }}
+                disabled={downloading}
+                className="btn-secondary flex items-center gap-1.5"
+                title="Download Portable ZIP Archive"
+              >
+                <Download size={13} />
+                <span>ZIP</span>
+              </button>
+            )}
+            <button onClick={onClose} className="btn-secondary">
+              Close
             </button>
-          ) : (
-            <button onClick={onClose} className="btn-primary">
-              OK
-            </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

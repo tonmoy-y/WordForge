@@ -179,7 +179,7 @@ export const FontDialog: React.FC<FontDialogProps> = ({ editor, onClose }) => {
                 textDecoration: underline ? 'underline' : strikethrough ? 'line-through' : 'none',
               }}
             >
-              DocCraft Sample Typography
+              WordForge Sample Typography
             </span>
           </div>
         </div>

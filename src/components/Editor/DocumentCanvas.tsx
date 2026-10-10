@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Editor, EditorContent } from '@tiptap/react';
 import { DocumentState } from '../../types/document';
 import {
@@ -7,6 +7,7 @@ import {
 } from '../../core/pagination/paginationEngine';
 import { DrawLayer } from './DrawLayer';
 import { HorizontalRuler } from './HorizontalRuler';
+import { VerticalRuler } from './VerticalRuler';
 
 interface DocumentCanvasProps {
   editor: Editor | null;
@@ -26,15 +27,22 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   strokeWidth,
 }) => {
   const { pageSetup, headerFooter, zoomLevel, viewMode, showRuler, drawings } = docState;
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   const pageDimensions = useMemo(() => getPageDimensionsPx(pageSetup), [pageSetup]);
 
-  // Paginated breakdown
+  // Calculated pages for page count
   const pages = useMemo(() => {
     return calculatePages(docState.htmlContent, pageSetup);
   }, [docState.htmlContent, pageSetup]);
 
   const scale = zoomLevel / 100;
+
+  // Sync scroll
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollLeft(e.currentTarget.scrollLeft);
+  };
 
   const handleAddStroke = (stroke: any) => {
     onUpdateDocState({
@@ -62,14 +70,17 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     return String(pageNumber);
   };
 
+  const totalPageCount = pages.length;
+
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#E8ECEF]">
-      {/* Horizontal Ruler */}
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#EAECEE]">
+      {/* 1. Horizontal Ruler Bar */}
       {showRuler && viewMode === 'print' && (
-        <div className="w-full bg-[#F1F5F9] border-b border-[#CBD5E1] overflow-hidden z-20">
+        <div className="w-full z-20 shrink-0">
           <HorizontalRuler
             pageSetup={pageSetup}
             zoomLevel={zoomLevel}
+            scrollLeft={scrollLeft}
             onUpdateMargins={(left, right) => {
               onUpdateDocState({
                 pageSetup: {
@@ -83,132 +94,141 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         </div>
       )}
 
-      {/* Main Viewport */}
+      {/* 2. Main Viewport & Document Desk */}
       <div
-        className={`word-canvas-viewport ${
-          viewMode === 'focus' ? 'bg-[#1E293B]' : 'bg-[#E8ECEF]'
+        ref={canvasViewportRef}
+        onScroll={handleScroll}
+        className={`word-canvas-viewport flex-1 overflow-auto relative ${
+          viewMode === 'focus' ? 'bg-[#0F172A]' : 'bg-[#EAECEE]'
         }`}
       >
-        <div
-          className="flex flex-col items-center origin-top transition-transform duration-75"
-          style={{
-            transform: `scale(${scale})`,
-          }}
-        >
-          {viewMode === 'print' ? (
-            /* PRINT LAYOUT: Paginated Paper Sheets */
-            pages.map((page, index) => {
-              const isFirst = index === 0;
-              const headerText =
-                isFirst && pageSetup.differentFirstPage
-                  ? headerFooter.firstPageHeaderText || ''
-                  : headerFooter.headerText;
-              const footerText =
-                isFirst && pageSetup.differentFirstPage
-                  ? headerFooter.firstPageFooterText || ''
-                  : headerFooter.footerText;
+        <div className="flex justify-center p-6 min-h-full">
+          {/* Vertical Ruler on the left when enabled */}
+          {showRuler && viewMode === 'print' && (
+            <div className="mr-3 pt-1">
+              <VerticalRuler pageSetup={pageSetup} zoomLevel={zoomLevel} />
+            </div>
+          )}
 
-              return (
+          {/* Scaled Page Container */}
+          <div
+            className="flex flex-col items-center origin-top transition-transform duration-75"
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: 'top center',
+            }}
+          >
+            {viewMode === 'print' ? (
+              /* PRINT LAYOUT: Authentic Microsoft Word for Mac Paper Sheet */
+              <div
+                className="word-page-sheet relative bg-white transition-all"
+                style={{
+                  width: `${pageDimensions.pageWidthPx}px`,
+                  minHeight: `${pageDimensions.pageHeightPx}px`,
+                  backgroundColor: pageSetup.pageColor || '#FFFFFF',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)',
+                  border: pageSetup.showPageBorders ? '2px solid #185ABD' : '1px solid #D5DAE0',
+                  paddingLeft: `${pageDimensions.marginLeftPx}px`,
+                  paddingRight: `${pageDimensions.marginRightPx}px`,
+                  paddingTop: `${pageDimensions.marginTopPx}px`,
+                  paddingBottom: `${pageDimensions.marginBottomPx}px`,
+                }}
+              >
+                {/* Watermark */}
+                {pageSetup.watermarkText && (
+                  <div className="word-page-watermark select-none pointer-events-none">
+                    {pageSetup.watermarkText}
+                  </div>
+                )}
+
+                {/* Top Margin Header Zone */}
                 <div
-                  key={index}
-                  className="word-page-sheet"
+                  className="word-page-header absolute top-0 left-0 right-0 flex items-center justify-between group hover:border-b hover:border-dashed hover:border-gray-300 transition-all select-none"
                   style={{
-                    width: `${pageDimensions.pageWidthPx}px`,
-                    minHeight: `${pageDimensions.pageHeightPx}px`,
-                    height: `${pageDimensions.pageHeightPx}px`,
-                    backgroundColor: pageSetup.pageColor || '#FFFFFF',
-                    border: pageSetup.showPageBorders ? '2px solid #185ABD' : '1px solid #D5DAE0',
+                    height: `${pageDimensions.marginTopPx}px`,
+                    paddingLeft: `${pageDimensions.marginLeftPx}px`,
+                    paddingRight: `${pageDimensions.marginRightPx}px`,
                   }}
                 >
-                  {/* Watermark */}
-                  {pageSetup.watermarkText && (
-                    <div className="word-page-watermark">{pageSetup.watermarkText}</div>
-                  )}
-
-                  {/* Header Area */}
-                  <div
-                    className="word-page-header"
-                    style={{
-                      paddingLeft: `${pageDimensions.marginLeftPx}px`,
-                      paddingRight: `${pageDimensions.marginRightPx}px`,
-                    }}
-                  >
-                    <span>{headerText}</span>
-                    <span className="text-[10px] text-gray-400">Header</span>
-                  </div>
-
-                  {/* Printable Content Area */}
-                  <div
-                    className="word-page-content-area"
-                    style={{
-                      paddingLeft: `${pageDimensions.marginLeftPx}px`,
-                      paddingRight: `${pageDimensions.marginRightPx}px`,
-                    }}
-                  >
-                    {isFirst ? (
-                      /* Live editable TipTap instance on first page or master flow */
-                      <EditorContent editor={editor} />
-                    ) : (
-                      /* Subsequent paginated overflow flow preview */
-                      <div
-                        className="ProseMirror"
-                        dangerouslySetInnerHTML={{ __html: page.htmlContent }}
-                      />
-                    )}
-                  </div>
-
-                  {/* Footer Area */}
-                  <div
-                    className="word-page-footer"
-                    style={{
-                      paddingLeft: `${pageDimensions.marginLeftPx}px`,
-                      paddingRight: `${pageDimensions.marginRightPx}px`,
-                    }}
-                  >
-                    <span>{footerText}</span>
-                    {headerFooter.showPageNumbers && (
-                      <span className="font-medium text-gray-500">
-                        {formatPageNumber(page.pageNumber, page.totalPageCount)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Digital Inking Overlay */}
-                  <DrawLayer
-                    pageIndex={index}
-                    width={pageDimensions.pageWidthPx}
-                    height={pageDimensions.pageHeightPx}
-                    drawingMode={drawingMode}
-                    strokeColor={strokeColor}
-                    strokeWidth={strokeWidth}
-                    drawings={drawings}
-                    onAddStroke={handleAddStroke}
-                    onRemoveStroke={handleRemoveStroke}
-                  />
+                  <span className="text-[11px] text-gray-500 font-sans tracking-tight">
+                    {pageSetup.differentFirstPage
+                      ? headerFooter.firstPageHeaderText || ''
+                      : headerFooter.headerText || ''}
+                  </span>
+                  <span className="text-[9px] text-gray-400 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                    Header
+                  </span>
                 </div>
-              );
-            })
-          ) : viewMode === 'web' ? (
-            /* WEB LAYOUT: Responsive continuous document */
-            <div
-              className="bg-white shadow-md p-12 max-w-4xl w-full min-h-[90vh] my-6 rounded"
-              style={{ backgroundColor: pageSetup.pageColor || '#FFFFFF' }}
-            >
-              <EditorContent editor={editor} />
-            </div>
-          ) : viewMode === 'read' ? (
-            /* READ MODE: Book-like reading format */
-            <div className="bg-[#FFFDF7] shadow-xl p-16 max-w-3xl w-full min-h-[90vh] my-8 rounded-lg border border-[#E6E1D3]">
-              <div className="text-center font-serif text-2xl font-bold mb-6 text-[#2D2A26]">
-                {docState.title}
+
+                {/* Main Editable Body Area */}
+                <div className="word-page-content-area relative min-h-[700px] outline-none">
+                  <EditorContent editor={editor} />
+                </div>
+
+                {/* Bottom Margin Footer Zone */}
+                <div
+                  className="word-page-footer absolute bottom-0 left-0 right-0 flex items-center justify-between group hover:border-t hover:border-dashed hover:border-gray-300 transition-all select-none"
+                  style={{
+                    height: `${pageDimensions.marginBottomPx}px`,
+                    paddingLeft: `${pageDimensions.marginLeftPx}px`,
+                    paddingRight: `${pageDimensions.marginRightPx}px`,
+                  }}
+                >
+                  <span className="text-[11px] text-gray-500 font-sans tracking-tight">
+                    {pageSetup.differentFirstPage
+                      ? headerFooter.firstPageFooterText || ''
+                      : headerFooter.footerText || ''}
+                  </span>
+                  {headerFooter.showPageNumbers && (
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {formatPageNumber(1, totalPageCount)}
+                    </span>
+                  )}
+                  <span className="text-[9px] text-gray-400 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                    Footer
+                  </span>
+                </div>
+
+                {/* Digital Inking Overlay */}
+                <DrawLayer
+                  pageIndex={0}
+                  width={pageDimensions.pageWidthPx}
+                  height={pageDimensions.pageHeightPx}
+                  drawingMode={drawingMode}
+                  strokeColor={strokeColor}
+                  strokeWidth={strokeWidth}
+                  drawings={drawings}
+                  onAddStroke={handleAddStroke}
+                  onRemoveStroke={handleRemoveStroke}
+                />
               </div>
-              <EditorContent editor={editor} />
-            </div>
-          ) : (
-            /* FOCUS MODE: Dark distraction-free mode */
-            <div className="bg-[#0F172A] text-[#F8FAFC] shadow-2xl p-16 max-w-3xl w-full min-h-[90vh] my-8 rounded-lg border border-slate-700">
-              <EditorContent editor={editor} />
-            </div>
+            ) : viewMode === 'web' ? (
+              /* WEB LAYOUT: Responsive continuous document */
+              <div
+                className="bg-white shadow-md p-12 max-w-4xl w-full min-h-[90vh] my-6 rounded border border-gray-200"
+                style={{ backgroundColor: pageSetup.pageColor || '#FFFFFF' }}
+              >
+                <EditorContent editor={editor} />
+              </div>
+            ) : viewMode === 'read' ? (
+              /* READ MODE: Book-like reading format */
+              <div className="bg-[#FFFDF7] shadow-xl p-16 max-w-3xl w-full min-h-[90vh] my-8 rounded-lg border border-[#E6E1D3]">
+                <div className="text-center font-serif text-2xl font-bold mb-6 text-[#2D2A26]">
+                  {docState.title}
+                </div>
+                <EditorContent editor={editor} />
+              </div>
+            ) : (
+              /* FOCUS MODE: Dark distraction-free mode */
+              <div className="bg-[#1E293B] text-[#F8FAFC] shadow-2xl p-16 max-w-3xl w-full min-h-[90vh] my-8 rounded-lg border border-slate-700">
+                <EditorContent editor={editor} />
+              </div>
+            )}
+          </div>
+
+          {/* Symmetric spacer on right so page sheet remains centered identically to HorizontalRuler */}
+          {showRuler && viewMode === 'print' && (
+            <div className="w-[30px] shrink-0 pointer-events-none" />
           )}
         </div>
       </div>

@@ -9,7 +9,7 @@ export interface ReleaseInfo {
   isNewer: boolean;
 }
 
-export const CURRENT_VERSION = '1.0.0';
+export const CURRENT_VERSION = '1.1.0';
 const REPO_OWNER = 'tonmoy-y';
 const REPO_NAME = 'WordForge';
 
@@ -30,7 +30,7 @@ export class UpdateService {
       }
 
       const data = await response.json();
-      const tagName = data.tag_name || 'v1.0.0';
+      const tagName = data.tag_name || 'v1.1.0';
       const cleanVersion = tagName.replace(/^v/, '');
 
       const dmgAsset = data.assets?.find((a: any) => a.name.endsWith('.dmg'));
@@ -42,7 +42,7 @@ export class UpdateService {
         version: cleanVersion,
         tagName,
         releaseDate: new Date(data.published_at || data.created_at).toLocaleDateString(),
-        releaseNotes: data.body || 'Performance enhancements and stability updates.',
+        releaseNotes: data.body || 'Performance enhancements, Word for Mac high-fidelity UI, and stability updates.',
         htmlUrl: data.html_url,
         dmgDownloadUrl: dmgAsset?.browser_download_url,
         zipDownloadUrl: zipAsset?.browser_download_url,
@@ -54,7 +54,7 @@ export class UpdateService {
         version: CURRENT_VERSION,
         tagName: `v${CURRENT_VERSION}`,
         releaseDate: new Date().toLocaleDateString(),
-        releaseNotes: 'You are running WordForge v1.0.0.',
+        releaseNotes: `You are running WordForge v${CURRENT_VERSION}.`,
         htmlUrl: `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`,
         isNewer: false,
       };
@@ -62,6 +62,11 @@ export class UpdateService {
   }
 
   public static downloadUpdate(url: string, filename: string = 'WordForge-Update.dmg'): void {
+    const api = (window as any).electronAPI;
+    if (api && api.openExternal) {
+      api.openExternal(url);
+      return;
+    }
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;

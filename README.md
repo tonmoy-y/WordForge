@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon%20%7C%20Intel)-lightgrey.svg)]()
 
-WordForge is a desktop word processor that reproduces the Microsoft Word for Mac editing experience and feature set with high fidelity. It provides a complete ribbon interface, continuous multi-page pagination, full styling, table editing, drawing annotations, track changes, mail merge, native DOCX/PDF export, and in-app automated updates directly from GitHub Releases.
+WordForge is a desktop word processor that reproduces the Microsoft Word for Mac editing experience and feature set with high fidelity. It provides an authentic Word for Mac unified window layout, complete 10-tab ribbon interface, contextual table design and layout tools, interactive 10×8 table grid picker, Microsoft Office theme colors matrix, continuous multi-page pagination with synchronous rulers, digital drawing ink layer, track changes, mail merge, native DOCX/PDF export, and automated in-app updates directly from GitHub Releases.
 
 ---
 
@@ -15,8 +15,8 @@ WordForge is a desktop word processor that reproduces the Microsoft Word for Mac
 
 Download the latest version directly from the [GitHub Releases](https://github.com/tonmoy-y/WordForge/releases) page:
 
-- **macOS DMG Installer (Apple Silicon):** [`WordForge-1.0.1-arm64.dmg`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64.dmg)
-- **macOS Portable Archive (Apple Silicon):** [`WordForge-1.0.1-arm64-mac.zip`](https://github.com/tonmoy-y/WordForge/releases/download/v1.0.1/WordForge-1.0.1-arm64-mac.zip)
+- **macOS DMG Installer (Apple Silicon):** [`WordForge-1.1.0-arm64.dmg`](https://github.com/tonmoy-y/WordForge/releases/download/v1.1.0/WordForge-1.1.0-arm64.dmg)
+- **macOS Portable Archive (Apple Silicon):** [`WordForge-1.1.0-arm64-mac.zip`](https://github.com/tonmoy-y/WordForge/releases/download/v1.1.0/WordForge-1.1.0-arm64-mac.zip)
 
 > [!NOTE]
 > **First-Time Launch on macOS (Gatekeeper)**
@@ -110,9 +110,17 @@ npm run electron:build
 ```
 
 Packaged distribution outputs will be located in the `release/` directory:
-- `release/WordForge-1.0.1-arm64.dmg` (Disk Image installer)
-- `release/WordForge-1.0.1-arm64-mac.zip` (Portable ZIP archive)
+- `release/WordForge-1.1.0-arm64.dmg` (Disk Image installer)
+- `release/WordForge-1.1.0-arm64-mac.zip` (Portable ZIP archive)
 - `release/mac-arm64/WordForge.app` (Application bundle)
+
+### Automated Release to GitHub
+
+To automatically build, codesign, and publish the release directly to GitHub Releases:
+
+```bash
+npm run build:release
+```
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "wordforge",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "WordForge - Professional Desktop Word Processor for macOS",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -9,7 +9,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron:dev": "vite",
-    "electron:build": "npm run build && electron-builder --mac"
+    "electron:build": "npm run build && electron-builder --mac",
+    "release": "node scripts/release.js",
+    "build:release": "npm run electron:build && node scripts/release.js"
   },
   "keywords": [
     "word-processor",
@@ -59,9 +61,12 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.6.1",
     "electron": "^34.2.0",
     "electron-builder": "^25.1.8",
     "jsdom": "^26.0.0",
+    "postcss": "^8.5.29",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vitest": "^3.0.5"

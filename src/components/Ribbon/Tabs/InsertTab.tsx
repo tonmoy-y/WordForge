@@ -11,15 +11,19 @@ import {
   Pi,
   Omega,
   Columns,
-  Grid,
+  MessageSquarePlus,
+  ChevronDown,
+  Hash,
 } from 'lucide-react';
 import { Editor } from '@tiptap/react';
+import { TableGridPicker } from '../TableGridPicker';
 
 interface InsertTabProps {
   editor: Editor | null;
   onOpenTableDialog: () => void;
   onOpenSymbolDialog: () => void;
   onOpenEquationDialog: () => void;
+  onNewComment?: () => void;
 }
 
 export const InsertTab: React.FC<InsertTabProps> = ({
@@ -27,9 +31,11 @@ export const InsertTab: React.FC<InsertTabProps> = ({
   onOpenTableDialog,
   onOpenSymbolDialog,
   onOpenEquationDialog,
+  onNewComment,
 }) => {
   const [showTablePicker, setShowTablePicker] = useState(false);
-  const [hoverGrid, setHoverGrid] = useState({ rows: 0, cols: 0 });
+  const [showShapesMenu, setShowShapesMenu] = useState(false);
+  const [showPageNumberMenu, setShowPageNumberMenu] = useState(false);
 
   if (!editor) return null;
 
@@ -55,29 +61,6 @@ export const InsertTab: React.FC<InsertTabProps> = ({
     input.click();
   };
 
-  const handleInsertGridTable = (rows: number, cols: number) => {
-    (editor.chain().focus() as any).insertTable({ rows, cols, withHeaderRow: true }).run();
-    setShowTablePicker(false);
-  };
-
-  const handleInsertLink = () => {
-    const url = prompt('Enter Hyperlink URL:', 'https://');
-    if (url) {
-      (editor.chain().focus() as any).toggleLink({ href: url }).run();
-    }
-  };
-
-  const handleInsertDateTime = () => {
-    const now = new Date();
-    const formatted = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    editor.chain().focus().insertContent(` ${formatted} `).run();
-  };
-
   const handleInsertShape = (shapeType: string) => {
     let svgHtml = '';
     if (shapeType === 'rect') {
@@ -86,10 +69,13 @@ export const InsertTab: React.FC<InsertTabProps> = ({
       svgHtml = `<div style="display:inline-block; margin: 8px 0;"><svg width="70" height="70"><circle cx="35" cy="35" r="32" fill="#EBF3FC" stroke="#185ABD" stroke-width="2"/></svg></div>`;
     } else if (shapeType === 'arrow') {
       svgHtml = `<div style="display:inline-block; margin: 8px 0;"><svg width="100" height="40"><path d="M5 20 L75 20 L75 10 L95 20 L75 30 L75 20" fill="#185ABD"/></svg></div>`;
+    } else if (shapeType === 'star') {
+      svgHtml = `<div style="display:inline-block; margin: 8px 0;"><svg width="60" height="60" viewBox="0 0 51 48"><polygon fill="#FFD700" stroke="#DAA520" stroke-width="2" points="25,1 32,18 49,18 35,29 40,46 25,36 10,46 15,29 1,18 18,18"/></svg></div>`;
     }
     if (svgHtml) {
       editor.chain().focus().insertContent(svgHtml).run();
     }
+    setShowShapesMenu(false);
   };
 
   return (
@@ -98,11 +84,9 @@ export const InsertTab: React.FC<InsertTabProps> = ({
       <div className="word-ribbon-group">
         <div className="word-group-content">
           <button
-            onClick={() => {
-              editor.chain().focus().insertContent('<h1 style="text-align:center; margin-top: 100px;">Document Title</h1><p style="text-align:center; color:#666;">Subtitle / Author</p><hr><div class="page-break" data-page-break="true"></div>').run();
-            }}
+            onClick={() => editor.chain().focus().insertContent('<h1>Document Title</h1><p class="subtitle">Subtitle</p><hr><p></p>').run()}
             className="ribbon-btn-large"
-            title="Insert Cover Page"
+            title="Insert Pre-formatted Cover Page"
           >
             <FileText size={22} className="text-[#185ABD]" />
             <span>Cover Page</span>
@@ -110,9 +94,17 @@ export const InsertTab: React.FC<InsertTabProps> = ({
           <button
             onClick={handleInsertPageBreak}
             className="ribbon-btn-large"
-            title="Page Break (Cmd+Enter)"
+            title="Insert Blank Page"
           >
-            <FilePlus size={22} className="text-[#185ABD]" />
+            <FilePlus size={22} className="text-[#107C41]" />
+            <span>Blank Page</span>
+          </button>
+          <button
+            onClick={handleInsertPageBreak}
+            className="ribbon-btn-large"
+            title="Page Break (⌘↵)"
+          >
+            <Columns size={22} className="text-[#2B579A]" />
             <span>Page Break</span>
           </button>
         </div>
@@ -121,56 +113,33 @@ export const InsertTab: React.FC<InsertTabProps> = ({
 
       <div className="word-group-separator" />
 
-      {/* 2. Tables Group */}
+      {/* 2. Tables Group with Interactive 10x8 Grid Picker */}
       <div className="word-ribbon-group">
-        <div className="word-group-content">
-          <div className="relative">
-            <button
-              onClick={() => setShowTablePicker(!showTablePicker)}
-              className="ribbon-btn-large"
-              title="Insert Table Grid"
-            >
-              <TableIcon size={22} className="text-[#185ABD]" />
+        <div className="word-group-content relative">
+          <button
+            onClick={() => setShowTablePicker(!showTablePicker)}
+            className="ribbon-btn-large"
+            title="Insert Table"
+          >
+            <TableIcon size={22} className="text-[#185ABD]" />
+            <div className="flex items-center gap-0.5">
               <span>Table</span>
-            </button>
-
-            {showTablePicker && (
-              <div className="absolute top-16 left-0 bg-white border border-gray-300 rounded shadow-xl p-3 z-50 w-52">
-                <div className="text-xs font-semibold mb-2 text-gray-700">
-                  {hoverGrid.rows > 0 ? `${hoverGrid.rows} × ${hoverGrid.cols} Table` : 'Insert Table'}
-                </div>
-                <div className="grid grid-cols-6 gap-1 mb-3">
-                  {Array.from({ length: 6 }).map((_, r) =>
-                    Array.from({ length: 6 }).map((_, c) => {
-                      const row = r + 1;
-                      const col = c + 1;
-                      const isHovered = row <= hoverGrid.rows && col <= hoverGrid.cols;
-                      return (
-                        <div
-                          key={`${r}-${c}`}
-                          onMouseEnter={() => setHoverGrid({ rows: row, cols: col })}
-                          onClick={() => handleInsertGridTable(row, col)}
-                          className={`w-6 h-6 border rounded-sm cursor-pointer transition ${
-                            isHovered ? 'bg-blue-200 border-blue-500' : 'bg-gray-50 border-gray-200'
-                          }`}
-                        />
-                      );
-                    })
-                  )}
-                </div>
-                <div className="h-px bg-gray-200 my-2" />
-                <button
-                  onClick={() => {
-                    setShowTablePicker(false);
-                    onOpenTableDialog();
-                  }}
-                  className="w-full text-left text-xs py-1 px-2 hover:bg-blue-50 text-blue-700 rounded font-medium"
-                >
-                  Custom Table Dimensions…
-                </button>
-              </div>
-            )}
-          </div>
+              <ChevronDown size={9} />
+            </div>
+          </button>
+          {showTablePicker && (
+            <TableGridPicker
+              onInsertTable={(rows, cols) => {
+                (editor.chain().focus() as any).insertTable({ rows, cols, withHeaderRow: true }).run();
+                setShowTablePicker(false);
+              }}
+              onOpenTableDialog={() => {
+                setShowTablePicker(false);
+                onOpenTableDialog();
+              }}
+              onClose={() => setShowTablePicker(false)}
+            />
+          )}
         </div>
         <div className="word-group-label">Tables</div>
       </div>
@@ -180,36 +149,60 @@ export const InsertTab: React.FC<InsertTabProps> = ({
       {/* 3. Illustrations Group */}
       <div className="word-ribbon-group">
         <div className="word-group-content">
-          <button onClick={handleInsertImage} className="ribbon-btn-large" title="Insert Picture from file">
+          <button
+            onClick={handleInsertImage}
+            className="ribbon-btn-large"
+            title="Insert Picture from file"
+          >
             <ImageIcon size={22} className="text-[#107C41]" />
             <span>Pictures</span>
           </button>
 
-          <div className="flex flex-col gap-0.5 justify-center">
+          {/* Shapes Dropdown */}
+          <div className="relative">
             <button
-              onClick={() => handleInsertShape('rect')}
-              className="flex items-center gap-1.5 px-2 py-0.5 hover:bg-gray-100 rounded text-xs text-gray-700"
-              title="Rectangle Shape"
+              onClick={() => setShowShapesMenu(!showShapesMenu)}
+              className="ribbon-btn-large"
+              title="Insert Geometric Shapes"
             >
-              <Shapes size={12} className="text-blue-600" />
-              <span>Rectangle</span>
+              <Shapes size={22} className="text-[#D83B01]" />
+              <div className="flex items-center gap-0.5">
+                <span>Shapes</span>
+                <ChevronDown size={9} />
+              </div>
             </button>
-            <button
-              onClick={() => handleInsertShape('circle')}
-              className="flex items-center gap-1.5 px-2 py-0.5 hover:bg-gray-100 rounded text-xs text-gray-700"
-              title="Circle Shape"
-            >
-              <Shapes size={12} className="text-green-600" />
-              <span>Circle</span>
-            </button>
-            <button
-              onClick={() => handleInsertShape('arrow')}
-              className="flex items-center gap-1.5 px-2 py-0.5 hover:bg-gray-100 rounded text-xs text-gray-700"
-              title="Arrow Shape"
-            >
-              <Shapes size={12} className="text-amber-600" />
-              <span>Arrow</span>
-            </button>
+            {showShapesMenu && (
+              <div className="absolute top-16 left-0 bg-white border border-gray-300 rounded shadow-xl p-2 z-50 grid grid-cols-2 gap-2 w-48 text-xs">
+                <button
+                  onClick={() => handleInsertShape('rect')}
+                  className="p-2 border border-gray-200 hover:bg-blue-50 rounded flex items-center gap-2"
+                >
+                  <div className="w-5 h-3 bg-blue-100 border border-blue-500 rounded-xs" />
+                  <span>Rectangle</span>
+                </button>
+                <button
+                  onClick={() => handleInsertShape('circle')}
+                  className="p-2 border border-gray-200 hover:bg-blue-50 rounded flex items-center gap-2"
+                >
+                  <div className="w-4 h-4 bg-blue-100 border border-blue-500 rounded-full" />
+                  <span>Circle</span>
+                </button>
+                <button
+                  onClick={() => handleInsertShape('arrow')}
+                  className="p-2 border border-gray-200 hover:bg-blue-50 rounded flex items-center gap-2"
+                >
+                  <span className="text-blue-600 font-bold">➔</span>
+                  <span>Arrow</span>
+                </button>
+                <button
+                  onClick={() => handleInsertShape('star')}
+                  className="p-2 border border-gray-200 hover:bg-blue-50 rounded flex items-center gap-2"
+                >
+                  <span className="text-amber-500">★</span>
+                  <span>Star</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="word-group-label">Illustrations</div>
@@ -217,54 +210,86 @@ export const InsertTab: React.FC<InsertTabProps> = ({
 
       <div className="word-group-separator" />
 
-      {/* 4. Links & Media */}
+      {/* 4. Links & Comments Group */}
       <div className="word-ribbon-group">
         <div className="word-group-content">
-          <button onClick={handleInsertLink} className="ribbon-btn-large" title="Insert Hyperlink (Cmd+K)">
-            <LinkIcon size={22} className="text-[#185ABD]" />
-            <span>Link</span>
-          </button>
           <button
             onClick={() => {
-              const name = prompt('Enter Bookmark Name:', 'Bookmark1');
-              if (name) {
-                editor.chain().focus().insertContent(`<span id="bm_${name}" class="bookmark-flag">[🚩 ${name}]</span>`).run();
-              }
+              const url = prompt('Enter Hyperlink URL:', 'https://');
+              if (url) (editor.chain().focus() as any).toggleLink({ href: url }).run();
             }}
             className="ribbon-btn-large"
-            title="Insert Bookmark"
+            title="Insert Hyperlink (⌘K)"
           >
-            <Bookmark size={22} className="text-[#185ABD]" />
-            <span>Bookmark</span>
+            <LinkIcon size={22} className="text-[#0284C7]" />
+            <span>Link</span>
           </button>
+          {onNewComment && (
+            <button
+              onClick={onNewComment}
+              className="ribbon-btn-large"
+              title="Add Comment to selection (⌘⌥M)"
+            >
+              <MessageSquarePlus size={22} className="text-[#742774]" />
+              <span>Comment</span>
+            </button>
+          )}
         </div>
-        <div className="word-group-label">Links</div>
+        <div className="word-group-label">Links & Comments</div>
       </div>
 
       <div className="word-group-separator" />
 
-      {/* 5. Text & Time */}
+      {/* 5. Header & Footer Group */}
       <div className="word-ribbon-group">
         <div className="word-group-content">
-          <button onClick={handleInsertDateTime} className="ribbon-btn-large" title="Insert Date & Time">
-            <Calendar size={22} className="text-[#2B579A]" />
-            <span>Date & Time</span>
+          <button
+            onClick={() => alert('Double click on the top margin of any page to edit Document Header')}
+            className="ribbon-btn-large"
+            title="Header"
+          >
+            <FileText size={22} className="text-gray-600" />
+            <span>Header</span>
+          </button>
+          <button
+            onClick={() => alert('Double click on the bottom margin of any page to edit Document Footer')}
+            className="ribbon-btn-large"
+            title="Footer"
+          >
+            <FileText size={22} className="text-gray-600" />
+            <span>Footer</span>
+          </button>
+          <button
+            onClick={() => alert('Page Number options: Bottom of Page (Page X of Y) is active.')}
+            className="ribbon-btn-large"
+            title="Page Numbers"
+          >
+            <Hash size={22} className="text-gray-600" />
+            <span>Page Number</span>
           </button>
         </div>
-        <div className="word-group-label">Text</div>
+        <div className="word-group-label">Header & Footer</div>
       </div>
 
       <div className="word-group-separator" />
 
-      {/* 6. Symbols & Equations */}
+      {/* 6. Symbols Group */}
       <div className="word-ribbon-group">
         <div className="word-group-content">
-          <button onClick={onOpenEquationDialog} className="ribbon-btn-large" title="Insert Equation">
+          <button
+            onClick={onOpenEquationDialog}
+            className="ribbon-btn-large"
+            title="Insert Math Equation (⌥=)"
+          >
             <Pi size={22} className="text-[#2B579A]" />
             <span>Equation</span>
           </button>
-          <button onClick={onOpenSymbolDialog} className="ribbon-btn-large" title="Insert Special Symbol">
-            <Omega size={22} className="text-[#2B579A]" />
+          <button
+            onClick={onOpenSymbolDialog}
+            className="ribbon-btn-large"
+            title="Insert Special Symbol Palette"
+          >
+            <Omega size={22} className="text-[#185ABD]" />
             <span>Symbol</span>
           </button>
         </div>
